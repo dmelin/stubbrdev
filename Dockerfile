@@ -19,6 +19,7 @@ RUN composer install --optimize-autoloader --no-dev
 
 # Laravel-specific setup
 RUN touch /tmp/database.sqlite
+RUN php artisan migrate --force
 RUN php artisan config:cache
 
 # Start Laravel server
