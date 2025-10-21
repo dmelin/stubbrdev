@@ -18,6 +18,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 RUN composer install --optimize-autoloader --no-dev
 
 # Laravel-specific setup
+RUN touch /tmp/database.sqlite
 RUN php artisan config:cache
 
 # Start Laravel server
