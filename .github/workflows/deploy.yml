@@ -1,33 +1,35 @@
-name: Deploy to Cloud Run
+name: Deploy Laravel to Cloud Run
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  deploy:
-    name: Build and Deploy
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Authenticate with Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
 
-    - name: Set up gcloud
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: your-project-id
-        service_account_email: your-service-account@your-project-id.iam.gserviceaccount.com
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v2
 
-    - name: Deploy to Cloud Run
-      uses: google-github-actions/deploy-cloudrun@v1
-      with:
-        service: laravel-app
-        region: europe-north2
-        source: .
+      - name: Build and push image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: europe-north2-docker.pkg.dev/laravel-cloud-475809/laravel-repo/laravel-app:latest
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: laravel-app
+          image: europe-north2-docker.pkg.dev/laravel-cloud-475809/laravel-repo/laravel-app:latest
+          region: europe-north2
