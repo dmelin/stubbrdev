@@ -464,3 +464,5 @@ curl -X POST https://your-api.com/api/users/profile \
 ---
 
 **Happy mocking! 🎭**
+
+Devs: Daniel Melin
