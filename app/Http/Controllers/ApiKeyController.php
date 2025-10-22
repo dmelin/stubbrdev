@@ -35,11 +35,11 @@ class ApiKeyController extends Controller
             'email' => $this->hashEmail($request->email),
             'token' => $token,
             'secret' => Hash::make($secret),
-            'is_valid' => false,
+            'is_valid' => true,
         ]);
 
         // Send email with code + key
-        Mail::to($request->email)->send(new ApiKeyVerificationMail($token, $secret));
+        //Mail::to($request->email)->send(new ApiKeyVerificationMail($token, $secret));
 
         return response()->json(['message' => 'Here\'s your token!.', 'token' => $token]);
     }
@@ -53,9 +53,9 @@ class ApiKeyController extends Controller
             return response()->json(['error' => 'We seem unable to find any token at all for that email. Do not try again - we did not make a mistake here (you did, so check spelling).'], 404);
         }
 
-        Mail::to($request->email)->send(new ApiKeyRecoveryMail($existingApiKey->token));
+        //Mail::to($request->email)->send(new ApiKeyRecoveryMail($existingApiKey->token));
 
-        return response()->json(['message' => 'Once lost can be found (check your email - we sent the token there).']);
+        return response()->json(['message' => 'Once lost can be found! Here\'s your token.', 'token' => $existingApiKey->token]);
     }
 
     public function verifyKey(Request $request) {
