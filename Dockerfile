@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.2-cli
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,11 +18,15 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 RUN composer install --optimize-autoloader --no-dev
 
 # Laravel-specific setup
-RUN touch /tmp/database.sqlite
-RUN php artisan migrate --force
+RUN touch /var/www/html/database/database.sqlite
 RUN php artisan config:cache
+RUN php artisan route:cache
+RUN php artisan migrate --force
+
+# Ensure storage and bootstrap/cache are writable
+RUN chmod -R 775 storage bootstrap/cache
+
+EXPOSE 8080
 
 # Start Laravel server
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8080"]
-
-EXPOSE 8080
