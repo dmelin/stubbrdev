@@ -41,7 +41,7 @@ class ApiKeyController extends Controller
         // Send email with code + key
         Mail::to($request->email)->send(new ApiKeyVerificationMail($token, $secret));
 
-        return response()->json(['message' => 'Verification code sent to email (check spam, abuse, the cloud, trash, under the bed).']);
+        return response()->json(['message' => 'Here\'s your token!.', 'token' => $token]);
     }
 
     public function recoverKey(Request $request) {
