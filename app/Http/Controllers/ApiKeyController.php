@@ -35,7 +35,7 @@ class ApiKeyController extends Controller
             'email' => $this->hashEmail($request->email),
             'token' => $token,
             'secret' => Hash::make($secret),
-            'is_valid' => true,
+            'enabled' => true,
         ]);
 
         // Send email with code + key
