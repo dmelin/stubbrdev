@@ -29,11 +29,21 @@ jobs:
               with:
                   context: .
                   push: true
-                  tags: europe-west1-docker.pkg.dev/laravel-cloud-475809/stubbr-dev-repo/laravel-app:latest
+                  # Project ID: stubbrdev
+                  tags: europe-west1-docker.pkg.dev/stubbrdev/stubbr-dev-repo/laravel-app:latest
 
             - name: Deploy to Cloud Run
               uses: google-github-actions/deploy-cloudrun@v1
               with:
                   service: StubbrDev
-                  image: europe-west1-docker.pkg.dev/laravel-cloud-475809/stubbr-dev-repo/laravel-app:latest
+                  # Image tag uses Project ID: stubbrdev
+                  image: europe-west1-docker.pkg.dev/stubbrdev/stubbr-dev-repo/laravel-app:latest
                   region: europe-west1
+                  # 1. Explicitly set the Project ID for clarity and security (Best Practice)
+                  project-id: stubbrdev
+                  # 2. Add configuration arguments required for a Laravel application (it expects port 8080)
+                  flags: |
+                      --port 8080
+                      --memory 512Mi
+                      --max-instances 3
+                      --allow-unauthenticated
