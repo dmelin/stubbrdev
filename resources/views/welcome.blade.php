@@ -1,679 +1,321 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StubbrDev API - Mock API with Superpowers</title>
-    <meta name="description" content="A flexible mock API service that echoes your requests with dynamic fake data generation. Perfect for frontend development, API testing, and demos.">
-    <meta name="author" content="Daniel Melin">
+import React, { useState } from 'react';
+import { Copy, Check, Key, Code, Zap, Shield, Clock } from 'lucide-react';
 
-    <!-- React & ReactDOM from CDN -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+export default function StubbrLanding() {
+  const [email, setEmail] = useState('');
+  const [token, setToken] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
 
-    <!-- Babel Standalone for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  const requestToken = async () => {
+    if (!email || !email.includes('@')) {
+      setError('Please enter a valid email address');
+      return;
+    }
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    setLoading(true);
+    setError('');
+    setToken('');
 
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    try {
+      const response = await fetch('https://stubbr.dev/__token/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
 
-        :root {
-            --bg-primary: #0f1419;
-            --bg-secondary: #1a1f2e;
-            --bg-card: rgba(26, 31, 46, 0.5);
-            --text-primary: #f5f5f7;
-            --text-secondary: rgba(245, 245, 247, 0.7);
-            --primary: #a855f7;
-            --accent: #06b6d4;
-            --border: rgba(168, 85, 247, 0.2);
-            --shadow-glow: 0 0 40px rgba(168, 85, 247, 0.3);
-        }
+      const data = await response.json();
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
-            background: linear-gradient(180deg, #0f1419, #1a1f2e);
-            color: var(--text-primary);
-            line-height: 1.6;
-        }
+      if (response.ok) {
+        setToken(data.token);
+      } else {
+        setError(data.error || 'Something went wrong');
+      }
+    } catch (err) {
+      setError('Failed to connect. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 24px;
-        }
+  const copyToken = () => {
+    navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-        /* Hero Section */
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      requestToken();
+    }
+  };
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 25%;
-            left: 25%;
-            width: 400px;
-            height: 400px;
-            background: var(--primary);
-            opacity: 0.15;
-            border-radius: 50%;
-            filter: blur(100px);
-            animation: pulse 4s ease-in-out infinite;
-        }
+  return (
+    <div className="min-h-screen bg-gray-100 text-gray-800">
+      <header className="border-b border-gray-300 bg-white/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
+              <Code className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">StubbrDev</h1>
+              <p className="text-xs text-gray-600">Mock API with Superpowers</p>
+            </div>
+          </div>
+          <a href="https://stubbr.dev" className="text-sm text-gray-600 hover:text-gray-900">
+            stubbr.dev
+          </a>
+        </div>
+      </header>
 
-        .hero::after {
-            content: '';
-            position: absolute;
-            bottom: 25%;
-            right: 25%;
-            width: 400px;
-            height: 400px;
-            background: var(--accent);
-            opacity: 0.15;
-            border-radius: 50%;
-            filter: blur(100px);
-            animation: pulse 4s ease-in-out infinite 2s;
-        }
+      <section className="py-16 px-6 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            Mock APIs Made Simple
+          </h2>
+          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            A flexible mock API service that echoes your requests with dynamic fake data generation. 
+            Perfect for frontend development, testing, and rapid prototyping.
+          </p>
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
+          <div className="grid md:grid-cols-4 gap-4 mb-12">
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <Zap className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+              <p className="text-sm font-medium">Instant Setup</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <Shield className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+              <p className="text-sm font-medium">Secure Tokens</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <Code className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+              <p className="text-sm font-medium">40+ Placeholders</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 border border-gray-200">
+              <Clock className="w-8 h-8 text-gray-700 mx-auto mb-2" />
+              <p className="text-sm font-medium">Rate Limited</p>
+            </div>
+          </div>
 
-        .hero-content {
-            text-align: center;
-            position: relative;
-            z-index: 1;
-        }
-
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            border-radius: 9999px;
-            background: rgba(168, 85, 247, 0.1);
-            border: 1px solid var(--border);
-            margin-bottom: 32px;
-            font-size: 14px;
-        }
-
-        h1 {
-            font-size: clamp(2.5rem, 8vw, 5rem);
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--accent), var(--primary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 24px;
-        }
-
-        .subtitle {
-            font-size: clamp(1.125rem, 3vw, 1.5rem);
-            color: var(--text-secondary);
-            max-width: 800px;
-            margin: 0 auto 48px;
-        }
-
-        /* Buttons */
-        .btn-group {
-            display: flex;
-            gap: 16px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 64px;
-        }
-
-        .btn {
-            padding: 12px 32px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-        }
-
-        .btn-primary:hover {
-            box-shadow: var(--shadow-glow);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(168, 85, 247, 0.1);
-        }
-
-        /* Feature Badges */
-        .feature-badges {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-        }
-
-        .feature-badge {
-            padding: 12px 24px;
-            border-radius: 12px;
-            background: var(--bg-card);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            font-size: 14px;
-            transition: border-color 0.3s ease;
-        }
-
-        .feature-badge:hover {
-            border-color: var(--primary);
-        }
-
-        /* Section */
-        section {
-            padding: 96px 24px;
-        }
-
-        .section-header {
-            text-align: center;
-            margin-bottom: 64px;
-        }
-
-        .section-title {
-            font-size: clamp(2rem, 5vw, 3rem);
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 16px;
-        }
-
-        .section-desc {
-            font-size: 1.25rem;
-            color: var(--text-secondary);
-        }
-
-        /* Code Block */
-        .code-block {
-            position: relative;
-            margin: 24px 0;
-        }
-
-        .code-block pre {
-            background: var(--bg-card);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 24px;
-            overflow-x: auto;
-            font-size: 14px;
-            font-family: 'Monaco', 'Courier New', monospace;
-        }
-
-        .copy-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            padding: 8px 16px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: var(--text-primary);
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s;
-        }
-
-        .copy-btn:hover {
-            background: var(--bg-primary);
-        }
-
-        /* Steps */
-        .steps {
-            display: flex;
-            flex-direction: column;
-            gap: 48px;
-        }
-
-        .step {
-            display: flex;
-            gap: 24px;
-            align-items: flex-start;
-        }
-
-        .step-icon {
-            flex-shrink: 0;
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--shadow-glow);
-        }
-
-        .step-content {
-            flex: 1;
-        }
-
-        .step-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .step-number {
-            color: rgba(168, 85, 247, 0.5);
-        }
-
-        .step-desc {
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-        }
-
-        /* Cards */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-top: 32px;
-        }
-
-        .card {
-            padding: 24px;
-            background: var(--bg-card);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .card:hover {
-            border-color: var(--primary);
-            box-shadow: 0 8px 32px rgba(168, 85, 247, 0.15);
-        }
-
-        .card-title {
-            font-size: 1.125rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 16px;
-        }
-
-        .card-item {
-            margin-bottom: 12px;
-        }
-
-        .card-label {
-            font-size: 12px;
-            font-family: 'Monaco', monospace;
-            color: var(--accent);
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .card-value {
-            font-size: 14px;
-            font-family: 'Monaco', monospace;
-            padding: 8px;
-            background: rgba(6, 182, 212, 0.1);
-            border-radius: 6px;
-        }
-
-        /* Footer */
-        footer {
-            padding: 48px 24px;
-            border-top: 1px solid var(--border);
-            background: var(--bg-card);
-        }
-
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 32px;
-            margin-bottom: 32px;
-        }
-
-        .footer-section h3 {
-            margin-bottom: 16px;
-            font-size: 1.125rem;
-        }
-
-        .footer-section ul {
-            list-style: none;
-        }
-
-        .footer-section li {
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        .footer-bottom {
-            padding-top: 32px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .footer-bottom p {
-            font-size: 14px;
-            color: var(--text-secondary);
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .step {
-                flex-direction: column;
-            }
-
-            .footer-bottom {
-                flex-direction: column;
-                text-align: center;
-            }
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-fade-in {
-            animation: fadeIn 0.6s ease-out forwards;
-        }
-    </style>
-</head>
-<body>
-<div id="root"></div>
-
-<script type="text/babel">
-    const { useState } = React;
-
-    // Code Block Component
-    const CodeBlock = ({ code }) => {
-        const [copied, setCopied] = useState(false);
-
-        const copyToClipboard = () => {
-            navigator.clipboard.writeText(code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        };
-
-        return (
-            <div className="code-block">
-                <button className="copy-btn" onClick={copyToClipboard}>
-                    {copied ? '✓ Copied' : 'Copy'}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Key className="w-5 h-5 text-gray-700" />
+              <h3 className="text-lg font-semibold text-gray-900">Get Your API Token</h3>
+            </div>
+            
+            {!token ? (
+              <div className="space-y-4">
+                <div>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-gray-900"
+                  />
+                </div>
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                <button
+                  onClick={requestToken}
+                  disabled={loading}
+                  className="w-full bg-gray-800 text-white py-3 rounded-lg font-medium hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {loading ? 'Requesting...' : 'Get Token'}
                 </button>
-                <pre><code>{code}</code></pre>
-            </div>
-        );
-    };
-
-    // Hero Component
-    const Hero = () => (
-        <section className="hero">
-            <div className="hero-content">
-                <div className="badge animate-fade-in">
-                    <span>⚡</span>
-                    <span>Mock API with Superpowers</span>
+                <p className="text-xs text-gray-500">One token per email • Free forever</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600 mb-2">Your API Token</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm font-mono text-gray-900 break-all">
+                      {token}
+                    </code>
+                    <button
+                      onClick={copyToken}
+                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                      title="Copy token"
+                    >
+                      {copied ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-gray-600" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-
-                <h1 className="animate-fade-in">StubbrDev API</h1>
-
-                <p className="subtitle animate-fade-in">
-                    Echo your requests with dynamic fake data generation.
-                    <br />
-                    Perfect for frontend development, API testing, and demos.
-                </p>
-
-                <div className="btn-group animate-fade-in">
-                    <a href="#quick-start" className="btn btn-primary">
-                        Get Started →
-                    </a>
-                    <a href="#documentation" className="btn btn-secondary">
-                        📖 View Docs
-                    </a>
+                <div className="text-sm text-gray-600 bg-green-50 px-4 py-3 rounded-lg border border-green-200">
+                  ✓ Token ready! Start making requests immediately.
                 </div>
+                <button
+                  onClick={() => { setToken(''); setEmail(''); }}
+                  className="text-sm text-gray-600 hover:text-gray-900"
+                >
+                  Request another token
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
-                <div className="feature-badges animate-fade-in">
-                    <div className="feature-badge">Any HTTP Method</div>
-                    <div className="feature-badge">100+ Fake Data Types</div>
-                    <div className="feature-badge">Custom Delays</div>
-                    <div className="feature-badge">Rate Limiting</div>
-                </div>
-            </div>
-        </section>
-    );
-
-    // Quick Start Component
-    const QuickStart = () => {
-        const steps = [
-            {
-                icon: '📧',
-                title: 'Request Your Token',
-                desc: 'Get started by requesting an API token with your email',
-                code: `curl -X POST https://your-api.com/__token/request \\
-  -H "Content-Type: application/json" \\
-  -d '{"email": "your@email.com"}'`
-            },
-            {
-                icon: '✅',
-                title: 'Verify Your Token',
-                desc: 'Check your email and verify with the provided credentials',
-                code: `curl -X POST https://your-api.com/__token/verify \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "email": "your@email.com",
-    "token": "YOUR_TOKEN_HERE",
-    "secret": "YOUR_SECRET_HERE"
-  }'`
-            },
-            {
-                icon: '🚀',
-                title: 'Make Your First Request',
-                desc: 'Start using the API with dynamic fake data generation',
-                code: `curl -X POST https://your-api.com/users \\
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \\
+      <section className="py-16 px-6 bg-white border-t border-gray-200">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Start</h3>
+          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 overflow-x-auto">
+            <pre className="text-sm text-gray-800">
+{`curl -X POST https://stubbr.dev/api/users \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{
     "name": "?name",
     "email": "?email",
     "age": "?numberSmall"
-  }'`
-            }
-        ];
-
-        return (
-            <section id="quick-start">
-                <div className="container">
-                    <div className="section-header">
-                        <h2 className="section-title">Quick Start</h2>
-                        <p className="section-desc">Get up and running in 3 simple steps</p>
-                    </div>
-
-                    <div className="steps">
-                        {steps.map((step, index) => (
-                            <div key={index} className="step animate-fade-in">
-                                <div className="step-icon">
-                                    <span style=@{{fontSize: '32px'}}>{step.icon}</span>
-                                </div>
-                                <div className="step-content">
-                                    <h3 className="step-title">
-                                        <span className="step-number">0{index + 1}</span>
-                                        {step.title}
-                                    </h3>
-                                    <p className="step-desc">{step.desc}</p>
-                                    <CodeBlock code={step.code} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-        );
-    };
-
-    // Fake Data Showcase Component
-    const FakeDataShowcase = () => {
-        const categories = [
-            {
-                name: 'Personal',
-                items: [
-                    { placeholder: '?name', example: 'Jane Smith' },
-                    { placeholder: '?email', example: 'jane@example.com' },
-                    { placeholder: '?phone', example: '+1-555-123-4567' }
-                ]
-            },
-            {
-                name: 'Numbers',
-                items: [
-                    { placeholder: '?number', example: '4721' },
-                    { placeholder: '?price', example: '49.99' },
-                    { placeholder: '?decimal', example: '342.87' }
-                ]
-            },
-            {
-                name: 'Date & Time',
-                items: [
-                    { placeholder: '?date', example: '2024-03-15' },
-                    { placeholder: '?time', example: '14:30:00' },
-                    { placeholder: '?timestamp', example: '1710514200' }
-                ]
-            },
-            {
-                name: 'Internet',
-                items: [
-                    { placeholder: '?url', example: 'https://example.com' },
-                    { placeholder: '?domain', example: 'example.com' },
-                    { placeholder: '?ip', example: '192.168.1.1' }
-                ]
-            }
-        ];
-
-        return (
-            <section style=@{{background: 'var(--bg-card)'}}>
-                <div className="container">
-                    <div className="section-header">
-                        <div className="badge">
-                            <span>✨</span>
-                            <span>100+ Fake Data Types</span>
-                        </div>
-                        <h2 className="section-title">Dynamic Data Generation</h2>
-                        <p className="section-desc">
-                            Replace any string with a ? prefix to generate realistic fake data
-                        </p>
-                    </div>
-
-                    <div className="card-grid">
-                        {categories.map(category => (
-                            <div key={category.name} className="card animate-fade-in">
-                                <h3 className="card-title">{category.name}</h3>
-                                {category.items.map(item => (
-                                    <div key={item.placeholder} className="card-item">
-                                        <code className="card-label">{item.placeholder}</code>
-                                        <code className="card-value">{item.example}</code>
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-        );
-    };
-
-    // Footer Component
-    const Footer = () => (
-        <footer>
-            <div className="container">
-                <div className="footer-content">
-                    <div className="footer-section">
-                        <h3>StubbrDev API</h3>
-                        <p style=@{{color: 'var(--text-secondary)', fontSize: '14px'}}>
-                            Mock API with Superpowers.
-                            <br />
-                            Built for developers, by developers.
-                        </p>
-                    </div>
-
-                    <div className="footer-section">
-                        <h3>Quick Links</h3>
-                        <ul>
-                            <li><a href="#quick-start" style=@{{color: 'var(--text-secondary)', textDecoration: 'none'}}>Quick Start</a></li>
-                            <li><a href="#documentation" style=@{{color: 'var(--text-secondary)', textDecoration: 'none'}}>Documentation</a></li>
-                            <li><a href="#examples" style=@{{color: 'var(--text-secondary)', textDecoration: 'none'}}>Examples</a></li>
-                        </ul>
-                    </div>
-
-                    <div className="footer-section">
-                        <h3>Limitations</h3>
-                        <ul>
-                            <li>• Max request size: 100KB</li>
-                            <li>• Max delay: 5000ms</li>
-                            <li>• One token per email</li>
-                            <li>• Tokens deleted after 30 days</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="footer-bottom">
-                    <p>© 2024 StubbrDev API. Created by Daniel Melin</p>
-                </div>
-            </div>
-        </footer>
-    );
-
-    // Main App Component
-    const App = () => (
-        <div>
-            <Hero />
-            <QuickStart />
-            <FakeDataShowcase />
-            <Footer />
+  }'`}
+            </pre>
+          </div>
+          <div className="mt-4 bg-gray-50 rounded-xl p-6 border border-gray-200">
+            <p className="text-xs text-gray-600 mb-2">Response:</p>
+            <pre className="text-sm text-gray-800">
+{`{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "age": 7
+}`}
+            </pre>
+          </div>
         </div>
-    );
+      </section>
 
-    // Render the app
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
-</body>
-</html>
+      <section className="py-16 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Fake Data Placeholders</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { title: 'Personal', items: ['?name', '?firstName', '?lastName', '?email', '?username', '?phone'] },
+              { title: 'Numbers', items: ['?number', '?numberSmall', '?numberLarge', '?decimal', '?price', '?id'] },
+              { title: 'Text', items: ['?word', '?sentence', '?paragraph', '?lorem', '?loremShort', '?loremLong'] },
+              { title: 'Date & Time', items: ['?date', '?dateTime', '?time', '?timestamp', '?stupidDateTime'] },
+              { title: 'Address', items: ['?address', '?street', '?city', '?state', '?zip', '?country'] },
+              { title: 'Other', items: ['?uuid', '?boolean', '?color', '?url', '?domain', '?image'] }
+            ].map((category, idx) => (
+              <div key={idx} className="bg-white rounded-lg p-6 border border-gray-200">
+                <h4 className="font-semibold text-gray-900 mb-3">{category.title}</h4>
+                <div className="flex flex-wrap gap-2">
+                  {category.items.map((item, i) => (
+                    <code key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      {item}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Array Repeating</h3>
+          <p className="text-gray-600 mb-6">
+            Generate multiple items using{' '}
+            <code className="bg-gray-100 px-2 py-1 rounded text-sm">__repeat</code>
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+              <p className="text-xs text-gray-600 mb-2">Request:</p>
+              <pre className="text-sm text-gray-800 overflow-x-auto">
+{`{
+  "user": {
+    "__repeat": 3,
+    "id": "?counter",
+    "name": "?name",
+    "email": "?email"
+  }
+}`}
+              </pre>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+              <p className="text-xs text-gray-600 mb-2">Response:</p>
+              <pre className="text-sm text-gray-800 overflow-x-auto">
+{`{
+  "users": [
+    {
+      "id": 0,
+      "name": "John Doe",
+      "email": "john@example.com"
+    }
+  ]
+}`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Special Instructions</h3>
+          <div className="bg-white rounded-xl p-6 border border-gray-200">
+            <p className="text-gray-600 mb-4">
+              Control response behavior with{' '}
+              <code className="bg-gray-100 px-2 py-1 rounded text-sm">__instructions</code>
+            </p>
+            <pre className="text-sm text-gray-800 overflow-x-auto">
+{`{
+  "user": { "name": "?name" },
+  "__instructions": {
+    "delay": 2000,
+    "status": 201,
+    "headers": {
+      "X-Custom": "Value"
+    },
+    "body": {
+      "success": true
+    }
+  }
+}`}
+            </pre>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16 px-6 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">Rate Limiting</h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+              <p className="text-3xl font-bold text-gray-900 mb-2">10</p>
+              <p className="text-sm text-gray-600">Requests per window</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+              <p className="text-3xl font-bold text-gray-900 mb-2">100KB</p>
+              <p className="text-sm text-gray-600">Max request size</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
+              <p className="text-3xl font-bold text-gray-900 mb-2">5s</p>
+              <p className="text-sm text-gray-600">Max delay</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="py-12 px-6 bg-gray-800 text-gray-300">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="mb-2">Built with ❤️ by Daniel Melin</p>
+          <a href="https://stubbr.dev" className="text-gray-400 hover:text-white">
+            stubbr.dev
+          </a>
+        </div>
+      </footer>
+    </div>
+  );
+}
