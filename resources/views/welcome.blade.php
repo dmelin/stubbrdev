@@ -1,321 +1,656 @@
-import React, { useState } from 'react';
-import { Copy, Check, Key, Code, Zap, Shield, Clock } from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stubbr.dev - Ship Faster. Delete Nothing.</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-export default function StubbrLanding() {
-  const [email, setEmail] = useState('');
-  const [token, setToken] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
+        :root {
+            --bg: #0a0a0f;
+            --bg-light: #151520;
+            --accent: #6366f1;
+            --accent-dark: #4f46e5;
+            --text: #e5e7eb;
+            --text-dim: #9ca3af;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
 
-  const requestToken = async () => {
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
-      return;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-    setLoading(true);
-    setError('');
-    setToken('');
+        /* Animated gradient background */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+        }
 
-    try {
-      const response = await fetch('https://stubbr.dev/__token/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            animation: rotate 20s linear infinite;
+        }
 
-      const data = await response.json();
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
 
-      if (response.ok) {
-        setToken(data.token);
-      } else {
-        setError(data.error || 'Something went wrong');
-      }
-    } catch (err) {
-      setError('Failed to connect. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 1;
+        }
 
-  const copyToken = () => {
-    navigator.clipboard.writeText(token);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+        .hero-content {
+            text-align: center;
+            padding: 4rem 0;
+        }
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      requestToken();
-    }
-  };
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            color: var(--accent);
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.6s ease-out;
+        }
 
-  return (
-    <div className="min-h-screen bg-gray-100 text-gray-800">
-      <header className="border-b border-gray-300 bg-white/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center">
-              <Code className="w-6 h-6 text-white" />
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero p {
+            font-size: clamp(1.125rem, 3vw, 1.5rem);
+            color: var(--text-dim);
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Code comparison section */
+        .comparison {
+            padding: 6rem 0;
+            background: var(--bg-light);
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: clamp(2rem, 5vw, 3rem);
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 1.25rem;
+            margin-bottom: 4rem;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .code-block:hover {
+            transform: translateY(-5px);
+        }
+
+        .code-block::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .code-block.bad::before {
+            background: var(--danger);
+        }
+
+        .code-block.good::before {
+            background: var(--success);
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .code-header.bad {
+            color: var(--danger);
+        }
+
+        .code-header.good {
+            color: var(--success);
+        }
+
+        pre {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            font-size: 0.875rem;
+            line-height: 1.8;
+        }
+
+        code {
+            font-family: 'Courier New', monospace;
+            color: #e5e7eb;
+        }
+
+        .keyword { color: #c678dd; }
+        .string { color: #98c379; }
+        .comment { color: #5c6370; font-style: italic; }
+        .function { color: #61afef; }
+
+        /* Features section */
+        .features {
+            padding: 6rem 0;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent);
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-dim);
+            line-height: 1.6;
+        }
+
+        /* Quick start section */
+        .quick-start {
+            padding: 6rem 0;
+            background: var(--bg-light);
+        }
+
+        .terminal {
+            background: #1a1a2e;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-top: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .terminal-header {
+            background: #0d0d15;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        .terminal-body {
+            padding: 2rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            line-height: 1.8;
+        }
+
+        .terminal-prompt {
+            color: var(--success);
+        }
+
+        .terminal-command {
+            color: var(--text);
+        }
+
+        .terminal-output {
+            color: var(--text-dim);
+            margin-left: 0;
+        }
+
+        /* CTA section */
+        .final-cta {
+            padding: 6rem 0;
+            text-align: center;
+        }
+
+        .final-cta h2 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            margin-bottom: 1rem;
+        }
+
+        .final-cta p {
+            font-size: 1.25rem;
+            color: var(--text-dim);
+            margin-bottom: 2rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-dim);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Animations on scroll */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="badge">🎭 Zero refactoring. Zero mock code.</div>
+                <h1>Ship Faster.<br>Delete Nothing.</h1>
+                <p>Build your frontend with production-ready API calls from day one. When your backend is ready, just change the host. No refactoring. No "remove mock code" commits.</p>
+                <div class="cta-buttons">
+                    <a href="#quick-start" class="btn btn-primary">
+                        Get Started Free
+                        <span>→</span>
+                    </a>
+                    <a href="#comparison" class="btn btn-secondary">
+                        See How It Works
+                    </a>
+                </div>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">StubbrDev</h1>
-              <p className="text-xs text-gray-600">Mock API with Superpowers</p>
-            </div>
-          </div>
-          <a href="https://stubbr.dev" className="text-sm text-gray-600 hover:text-gray-900">
-            stubbr.dev
-          </a>
         </div>
-      </header>
+    </section>
 
-      <section className="py-16 px-6 bg-gradient-to-b from-white to-gray-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Mock APIs Made Simple
-          </h2>
-          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            A flexible mock API service that echoes your requests with dynamic fake data generation. 
-            Perfect for frontend development, testing, and rapid prototyping.
-          </p>
+    <!-- Comparison Section -->
+    <section id="comparison" class="comparison">
+        <div class="container">
+            <h2 class="section-title">The Migration Problem</h2>
+            <p class="section-subtitle">Traditional mock APIs force you to maintain two codebases</p>
+            
+            <div class="comparison-grid">
+                <div class="code-block bad">
+                    <div class="code-header bad">
+                        <span>❌</span>
+                        <span>Traditional Approach</span>
+                    </div>
+                    <pre><code><span class="comment">// Development - mock data</span>
+<span class="keyword">if</span> (DEV_MODE) {
+  <span class="keyword">return</span> mockData
+}
 
-          <div className="grid md:grid-cols-4 gap-4 mb-12">
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <Zap className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-              <p className="text-sm font-medium">Instant Setup</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <Shield className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-              <p className="text-sm font-medium">Secure Tokens</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <Code className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-              <p className="text-sm font-medium">40+ Placeholders</p>
-            </div>
-            <div className="bg-white rounded-lg p-4 border border-gray-200">
-              <Clock className="w-8 h-8 text-gray-700 mx-auto mb-2" />
-              <p className="text-sm font-medium">Rate Limited</p>
-            </div>
-          </div>
+<span class="comment">// Production - real API</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(<span class="string">'/api/users'</span>, {
+  <span class="keyword">body</span>: <span class="function">JSON.stringify</span>({ user_id })
+})
 
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md mx-auto">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Key className="w-5 h-5 text-gray-700" />
-              <h3 className="text-lg font-semibold text-gray-900">Get Your API Token</h3>
+<span class="comment">// Maintain two codepaths forever 😩</span></code></pre>
+                </div>
+
+                <div class="code-block good">
+                    <div class="code-header good">
+                        <span>✅</span>
+                        <span>Stubbr.dev - Same Request, Real Response</span>
+                    </div>
+                    <pre><code><span class="comment">// Identical code in dev AND production!</span>
+<span class="keyword">const</span> response = <span class="keyword">await</span> <span class="function">fetch</span>(`${API_HOST}/users`, {
+  <span class="keyword">body</span>: <span class="function">JSON.stringify</span>({
+    user_id: <span class="string">191</span>, <span class="comment">// ← Real payload</span>
+    __instructions: { <span class="comment">// ← Ignored in prod</span>
+      body: { users: { __repeat: 10 } }
+    }
+  })
+})</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">The Secret: Request Stays Clean</h2>
+            <p class="section-subtitle">Real payload outside. Mock response inside __instructions.</p>
+            
+            <div style="max-width: 800px; margin: 0 auto 4rem; background: rgba(0,0,0,0.3); padding: 2rem; border-radius: 1rem; border: 1px solid rgba(99, 102, 241, 0.3);">
+                <pre style="margin: 0;"><code>{
+  <span class="string">"user_id"</span>: <span class="string">191</span>,              <span class="comment">// ← Production payload</span>
+  <span class="string">"filters"</span>: { <span class="string">"active"</span>: <span class="keyword">true</span> }, <span class="comment">// ← Backend sees this</span>
+  
+  <span class="string">"__instructions"</span>: {        <span class="comment">// ← Gets ignored in prod</span>
+    <span class="string">"body"</span>: {
+      <span class="string">"users"</span>: {
+        <span class="string">"__repeat"</span>: <span class="string">10</span>,
+        <span class="string">"name"</span>: <span class="string">"?name"</span>,
+        <span class="string">"email"</span>: <span class="string">"?email"</span>
+      }
+    }
+  }
+}</code></pre>
             </div>
             
-            {!token ? (
-              <div className="space-y-4">
-                <div>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="your@email.com"
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-gray-900"
-                  />
+            <h2 class="section-title" style="margin-top: 4rem;">Built for Modern Development</h2>
+            <p class="section-subtitle">Everything you need to ship faster</p>
+            
+            <div class="features-grid">
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Clean Request Separation</h3>
+                    <p>Real payload outside. Mock response in __instructions. Backend sees exactly what it'll get in production—no placeholder pollution.</p>
                 </div>
-                {error && (
-                  <div className="text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg">
-                    {error}
-                  </div>
-                )}
-                <button
-                  onClick={requestToken}
-                  disabled={loading}
-                  className="w-full bg-gray-800 text-white py-3 rounded-lg font-medium hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loading ? 'Requesting...' : 'Get Token'}
-                </button>
-                <p className="text-xs text-gray-500">One token per email • Free forever</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                  <p className="text-xs text-gray-600 mb-2">Your API Token</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-sm font-mono text-gray-900 break-all">
-                      {token}
-                    </code>
-                    <button
-                      onClick={copyToken}
-                      className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                      title="Copy token"
-                    >
-                      {copied ? (
-                        <Check className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <Copy className="w-4 h-4 text-gray-600" />
-                      )}
-                    </button>
-                  </div>
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Instant Array Generation</h3>
+                    <p>Use __repeat to generate 1 or 1000 items. Perfect for testing infinite scroll, pagination, and data grids.</p>
                 </div>
-                <div className="text-sm text-gray-600 bg-green-50 px-4 py-3 rounded-lg border border-green-200">
-                  ✓ Token ready! Start making requests immediately.
+
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Test Real Scenarios</h3>
+                    <p>Add delays, custom status codes, and headers with __instructions. Test loading states and error handling properly.</p>
                 </div>
-                <button
-                  onClick={() => { setToken(''); setEmail(''); }}
-                  className="text-sm text-gray-600 hover:text-gray-900"
-                >
-                  Request another token
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
-      <section className="py-16 px-6 bg-white border-t border-gray-200">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Quick Start</h3>
-          <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 overflow-x-auto">
-            <pre className="text-sm text-gray-800">
-{`curl -X POST https://stubbr.dev/api/users \\
-  -H "Authorization: Bearer YOUR_TOKEN" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "?name",
-    "email": "?email",
-    "age": "?numberSmall"
-  }'`}
-            </pre>
-          </div>
-          <div className="mt-4 bg-gray-50 rounded-xl p-6 border border-gray-200">
-            <p className="text-xs text-gray-600 mb-2">Response:</p>
-            <pre className="text-sm text-gray-800">
-{`{
-  "name": "John Doe",
-  "email": "john.doe@example.com",
-  "age": 7
-}`}
-            </pre>
-          </div>
-        </div>
-      </section>
-
-      <section className="py-16 px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Fake Data Placeholders</h3>
-          <div className="grid md:grid-cols-2 gap-6">
-            {[
-              { title: 'Personal', items: ['?name', '?firstName', '?lastName', '?email', '?username', '?phone'] },
-              { title: 'Numbers', items: ['?number', '?numberSmall', '?numberLarge', '?decimal', '?price', '?id'] },
-              { title: 'Text', items: ['?word', '?sentence', '?paragraph', '?lorem', '?loremShort', '?loremLong'] },
-              { title: 'Date & Time', items: ['?date', '?dateTime', '?time', '?timestamp', '?stupidDateTime'] },
-              { title: 'Address', items: ['?address', '?street', '?city', '?state', '?zip', '?country'] },
-              { title: 'Other', items: ['?uuid', '?boolean', '?color', '?url', '?domain', '?image'] }
-            ].map((category, idx) => (
-              <div key={idx} className="bg-white rounded-lg p-6 border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-3">{category.title}</h4>
-                <div className="flex flex-wrap gap-2">
-                  {category.items.map((item, i) => (
-                    <code key={i} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                      {item}
-                    </code>
-                  ))}
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">🎲</div>
+                    <h3>40+ Fake Data Types</h3>
+                    <p>Names, emails, addresses, prices, dates, UUIDs, and more. Realistic data makes better UI decisions.</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Array Repeating</h3>
-          <p className="text-gray-600 mb-6">
-            Generate multiple items using{' '}
-            <code className="bg-gray-100 px-2 py-1 rounded text-sm">__repeat</code>
-          </p>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-              <p className="text-xs text-gray-600 mb-2">Request:</p>
-              <pre className="text-sm text-gray-800 overflow-x-auto">
-{`{
-  "user": {
-    "__repeat": 3,
-    "id": "?counter",
-    "name": "?name",
-    "email": "?email"
-  }
-}`}
-              </pre>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-              <p className="text-xs text-gray-600 mb-2">Response:</p>
-              <pre className="text-sm text-gray-800 overflow-x-auto">
-{`{
-  "users": [
-    {
-      "id": 0,
-      "name": "John Doe",
-      "email": "john@example.com"
-    }
-  ]
-}`}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </section>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">🤝</div>
+                    <h3>Backend Parallel Development</h3>
+                    <p>Backend team sees exactly what shape you're sending. No "wait, what format?" conversations.</p>
+                </div>
 
-      <section className="py-16 px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Special Instructions</h3>
-          <div className="bg-white rounded-xl p-6 border border-gray-200">
-            <p className="text-gray-600 mb-4">
-              Control response behavior with{' '}
-              <code className="bg-gray-100 px-2 py-1 rounded text-sm">__instructions</code>
-            </p>
-            <pre className="text-sm text-gray-800 overflow-x-auto">
-{`{
-  "user": { "name": "?name" },
-  "__instructions": {
-    "delay": 2000,
-    "status": 201,
-    "headers": {
-      "X-Custom": "Value"
-    },
-    "body": {
-      "success": true
-    }
-  }
-}`}
-            </pre>
-          </div>
+                <div class="feature-card fade-in">
+                    <div class="feature-icon">🚀</div>
+                    <h3>One-Line Migration</h3>
+                    <p>Change API_HOST and you're done. Backend ignores your placeholders. Zero refactoring needed.</p>
+                </div>
+            </div>
         </div>
-      </section>
+    </section>
 
-      <section className="py-16 px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">Rate Limiting</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-gray-900 mb-2">10</p>
-              <p className="text-sm text-gray-600">Requests per window</p>
+    <!-- Quick Start Section -->
+    <section id="quick-start" class="quick-start">
+        <div class="container">
+            <h2 class="section-title">Get Started in 60 Seconds</h2>
+            <p class="section-subtitle">No installation. No configuration. Just make requests.</p>
+            
+            <div class="terminal fade-in">
+                <div class="terminal-header">
+                    <div class="terminal-dot dot-red"></div>
+                    <div class="terminal-dot dot-yellow"></div>
+                    <div class="terminal-dot dot-green"></div>
+                </div>
+                <div class="terminal-body">
+                    <div><span class="terminal-prompt">$</span> <span class="terminal-command">curl -X POST https://stubbr.dev/__token/request \</span></div>
+                    <div><span class="terminal-command">  -H "Content-Type: application/json" \</span></div>
+                    <div><span class="terminal-command">  -d '{"email": "dev@example.com"}'</span></div>
+                    <div class="terminal-output">{"token": "a3bb189e-8bf9-3888-9912-ace4e6543002"}</div>
+                    
+                    <div style="margin-top: 1.5rem;"><span class="terminal-prompt">$</span> <span class="terminal-command">curl https://stubbr.dev/api/users \</span></div>
+                    <div><span class="terminal-command">  -H "Authorization: Bearer YOUR_TOKEN" \</span></div>
+                    <div><span class="terminal-command">  -d '{</span></div>
+                    <div><span class="terminal-command">    "user_id": 191,</span></div>
+                    <div><span class="terminal-command">    "__instructions": {</span></div>
+                    <div><span class="terminal-command">      "body": {"users": {"__repeat": 3, "name": "?name"}}</span></div>
+                    <div><span class="terminal-command">    }</span></div>
+                    <div><span class="terminal-command">  }'</span></div>
+                    
+                    <div class="terminal-output">{"users": [</div>
+                    <div class="terminal-output">  {"name": "John Doe"},</div>
+                    <div class="terminal-output">  {"name": "Jane Smith"},</div>
+                    <div class="terminal-output">  {"name": "Bob Wilson"}</div>
+                    <div class="terminal-output">]}</div>
+                    
+                    <div style="margin-top: 1.5rem; color: var(--success);">✓ Change host to prod → backend ignores __instructions</div>
+                    <div style="color: var(--success);">✓ Your request payload (user_id) stays identical!</div>
+                </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-gray-900 mb-2">100KB</p>
-              <p className="text-sm text-gray-600">Max request size</p>
-            </div>
-            <div className="bg-gray-50 rounded-lg p-6 border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-gray-900 mb-2">5s</p>
-              <p className="text-sm text-gray-600">Max delay</p>
-            </div>
-          </div>
         </div>
-      </section>
+    </section>
 
-      <footer className="py-12 px-6 bg-gray-800 text-gray-300">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="mb-2">Built with ❤️ by Daniel Melin</p>
-          <a href="https://stubbr.dev" className="text-gray-400 hover:text-white">
-            stubbr.dev
-          </a>
+    <!-- Final CTA -->
+    <section class="final-cta">
+        <div class="container">
+            <h2>Stop Writing Mock Code.<br>Start Shipping.</h2>
+            <p>Join developers who ship features, not refactoring PRs.</p>
+            <div class="cta-buttons">
+                <a href="https://stubbr.dev/__token/request" class="btn btn-primary">
+                    Get Your Free Token
+                    <span>→</span>
+                </a>
+                <a href="https://stubbr.dev" class="btn btn-secondary">
+                    Read the Docs
+                </a>
+            </div>
         </div>
-      </footer>
-    </div>
-  );
-}
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>Built with ❤️ by Daniel Melin | <a href="https://stubbr.dev">stubbr.dev</a></p>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem;">Free forever. No credit card required.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Fade in animations on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.fade-in').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
