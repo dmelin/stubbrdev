@@ -604,7 +604,7 @@
                     Get Your Free Token
                     <span>→</span>
                 </a>
-                <a href="https://stubbr.dev" class="btn btn-secondary">
+                <a href="https://github.com/dmelin/stubbrdev" class="btn btn-secondary">
                     Read the Docs
                 </a>
             </div>
