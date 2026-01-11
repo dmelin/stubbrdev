@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Faker\Generator as Faker;
 use Illuminate\Support\Str;
 use App\Models\RequestCache;
+use Ramsey\Uuid\Uuid;
 
 class Dummy extends Controller
 {
@@ -79,7 +80,7 @@ class Dummy extends Controller
 
             if (!empty($instructions->headers) && is_array($instructions->headers)) {
                 foreach ($instructions->headers as $key => $value) {
-                    if (is_scalar($value)) {
+                    if (is_scalar($value) && $this->isAllowedHeader($key)) {
                         $responseHeaders[$key] = $value;
                     }
                 }
@@ -140,7 +141,7 @@ class Dummy extends Controller
         return response()->json($returnBody, $responseStatus, $responseHeaders);
     }
 
-    protected function applyRepeats($data, $repeatCount = 0, ?string $parentKey = null)
+    protected function applyRepeats($data, $repeatCount = 0, ?string $parentKey = null, bool $useUuid = false)
     {
         if (is_array($data)) {
             $data = (object) $data;
@@ -161,6 +162,12 @@ class Dummy extends Controller
                         $this->perPage = $n;
                     }
 
+                    // Check for __uuid flag on this block
+                    $blockUseUuid = $useUuid;
+                    if (property_exists($v, '__uuid') && $v->__uuid === true) {
+                        $blockUseUuid = true;
+                    }
+
                     $targetKey = Str::plural($k);
 
                     $template = $this->stripInlineMeta($v);
@@ -172,9 +179,9 @@ class Dummy extends Controller
                         $i++
                     ) {
                         $item = $this->cloneValue($template);
-                        $item = $this->applyRepeats($item, $nextDepth, $k);
+                        $item = $this->applyRepeats($item, $nextDepth, $k, $blockUseUuid);
 
-                        $item = $this->applyFaker($item, $index);
+                        $item = $this->applyFaker($item, $index, $blockUseUuid);
 
                         $items[] = $item;
                     }
@@ -184,7 +191,7 @@ class Dummy extends Controller
                     continue;
                 }
 
-                $data->$k = $this->applyRepeats($v, 0, $k);
+                $data->$k = $this->applyRepeats($v, 0, $k, $useUuid);
             }
 
             return $data;
@@ -210,7 +217,7 @@ class Dummy extends Controller
     private
     function stripInlineMeta($obj)
     {
-        // Return a copy of $obj without __repeat / __as
+        // Return a copy of $obj without __repeat / __as / __uuid
         $copy = $this->cloneValue($obj);
         if (is_object($copy)) {
             if (property_exists($copy, '__repeat')) {
@@ -218,6 +225,9 @@ class Dummy extends Controller
             }
             if (property_exists($copy, '__as')) {
                 unset($copy->__as);
+            }
+            if (property_exists($copy, '__uuid')) {
+                unset($copy->__uuid);
             }
         }
 
@@ -239,15 +249,15 @@ class Dummy extends Controller
     }
 
     protected
-    function applyFaker($data, &$index = 0)
+    function applyFaker($data, &$index = 0, bool $useUuid = false)
     {
         if (is_object($data)) {
             foreach ($data as $key => $value) {
-                $data->$key = $this->applyFaker($value, $index);
+                $data->$key = $this->applyFaker($value, $index, $useUuid);
             }
         } elseif (is_array($data)) {
             foreach ($data as $key => $value) {
-                $data[$key] = $this->applyFaker($value, $index);
+                $data[$key] = $this->applyFaker($value, $index, $useUuid);
             }
         } elseif (is_string($data) && str_starts_with($data, '?')) {
             $type = substr($data, 1);
@@ -258,6 +268,9 @@ class Dummy extends Controller
             } elseif ($type === 'counterUuid') {
                 $return = $this->generateUuidFromIndex($index);
                 $index++;
+            } elseif ($useUuid && ($type === 'id' || $type === 'uuid')) {
+                // When __uuid is enabled, id and uuid become UUID7
+                $return = Uuid::uuid7()->toString();
             } else {
                 $return = $this->getFakerValue($type);
             }
@@ -343,5 +356,82 @@ class Dummy extends Controller
 
             default => '?' . $type // Return original if not found
         };
+    }
+
+    protected function isAllowedHeader(string $name): bool
+    {
+        $name = strtolower(trim($name));
+
+        // Block headers that could break the response or cause security issues
+        $blocklist = [
+            // Response body/encoding - would break the response
+            'content-length',
+            'content-encoding',
+            'transfer-encoding',
+
+            // Cookie manipulation
+            'set-cookie',
+            'set-cookie2',
+
+            // CORS - could bypass security policies
+            'access-control-allow-origin',
+            'access-control-allow-credentials',
+            'access-control-allow-methods',
+            'access-control-allow-headers',
+            'access-control-expose-headers',
+            'access-control-max-age',
+
+            // Security headers - shouldn't be weakened
+            'content-security-policy',
+            'content-security-policy-report-only',
+            'x-content-type-options',
+            'x-frame-options',
+            'x-xss-protection',
+            'strict-transport-security',
+            'permissions-policy',
+
+            // Connection handling
+            'connection',
+            'keep-alive',
+            'upgrade',
+            'http2-settings',
+
+            // Server identification
+            'server',
+            'x-powered-by',
+
+            // Proxying/forwarding
+            'via',
+            'forwarded',
+            'x-forwarded-for',
+            'x-forwarded-host',
+            'x-forwarded-proto',
+
+            // Caching internals
+            'age',
+            'vary',
+
+            // Authentication
+            'www-authenticate',
+            'proxy-authenticate',
+            'authorization',
+            'proxy-authorization',
+        ];
+
+        if (in_array($name, $blocklist, true)) {
+            return false;
+        }
+
+        // Block headers starting with __ (internal convention)
+        if (str_starts_with($name, '__')) {
+            return false;
+        }
+
+        // Block empty header names
+        if ($name === '') {
+            return false;
+        }
+
+        return true;
     }
 }
