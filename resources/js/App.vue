@@ -65,6 +65,19 @@ const selectModalOnPick = ref(null);
 const selectPopoverStyle = ref({});
 const codeExampleLanguage = ref('curl');
 const codeCopied = ref(false);
+const heroModalOpen = ref(true);
+const HERO_DISMISSED_STORAGE_KEY = 'stubbr_hero_dismissed_v1';
+const THEME_STORAGE_KEY = 'stubbr_theme_v1';
+const themeMenuOpen = ref(false);
+const activeThemeId = ref('stubbr');
+const themeOptions = [
+    { id: 'stubbr', label: 'Stubbr' },
+    { id: 'ice', label: 'Ice' },
+    { id: 'mustard', label: 'Mustard' },
+    { id: 'techno', label: 'Techno' },
+    { id: 'retro', label: 'Retro' },
+];
+const isPhoneView = ref(false);
 const sidebarOpen = ref(false);
 const sidebarWidth = ref(450);
 const isResizingSidebar = ref(false);
@@ -76,12 +89,14 @@ const activeSidebarSectionId = ref('how-it-works');
 const readmePanelRef = ref(null);
 const sidebarSectionRefs = new Map();
 const sidebarOpenWidth = 450;
+const sidebarOpenTransitionMs = 190;
 const readmeScrollOffset = 64;
 const readmeSnapDebounceMs = 180;
 const readmeSnapDurationMs = 420;
 let readmeSnapTimer = null;
 let readmeAutoScrollUnlockTimer = null;
 let isReadmeAutoScrolling = false;
+const phoneViewMediaQuery = '(max-width: 900px)';
 
 const randomizerTableTabs = [
     {
@@ -755,6 +770,49 @@ const onRowDragEnd = () => {
     dragOverRowId.value = null;
 };
 
+const updatePhoneViewState = () => {
+    const isNarrow = window.matchMedia(phoneViewMediaQuery).matches;
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const isMobileUa = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+    isPhoneView.value = isNarrow && (isCoarsePointer || isMobileUa);
+    document.body.classList.toggle('is-phone-view', isPhoneView.value);
+};
+
+const closeHeroModal = () => {
+    heroModalOpen.value = false;
+    try {
+        localStorage.setItem(HERO_DISMISSED_STORAGE_KEY, '1');
+    } catch (_error) {
+        // Ignore storage failures.
+    }
+};
+
+const reopenHeroModal = () => {
+    try {
+        localStorage.removeItem(HERO_DISMISSED_STORAGE_KEY);
+    } catch (_error) {
+        // Ignore storage failures.
+    }
+    heroModalOpen.value = true;
+};
+
+const applyTheme = (themeId) => {
+    const allowed = new Set(themeOptions.map((theme) => theme.id));
+    const normalized = allowed.has(themeId) ? themeId : 'stubbr';
+    activeThemeId.value = normalized;
+    document.documentElement.setAttribute('data-theme', normalized);
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, normalized);
+    } catch (_error) {
+        // Ignore storage failures.
+    }
+};
+
+const selectTheme = (themeId) => {
+    applyTheme(themeId);
+    themeMenuOpen.value = false;
+};
+
 const onTypeChange = (row) => {
     row.placeholder = defaultPlaceholderForType(row.type);
     if (!randomAllowed(row.type)) {
@@ -895,11 +953,18 @@ const sidebarIconElements = (name) => {
 };
 
 const toggleSidebarSection = (sectionId) => {
+    const wasOpen = sidebarOpen.value;
     activeSidebarSectionId.value = sectionId;
     if (sidebarWidth.value < sidebarOpenWidth) {
         sidebarWidth.value = sidebarOpenWidth;
     }
     sidebarOpen.value = true;
+    if (!wasOpen) {
+        window.setTimeout(() => {
+            scrollReadmeToSection(sectionId, 'smooth');
+        }, sidebarOpenTransitionMs);
+        return;
+    }
     nextTick(() => scrollReadmeToSection(sectionId, 'smooth'));
 };
 
@@ -1590,6 +1655,26 @@ const sendRequest = async () => {
 };
 
 onMounted(async () => {
+    try {
+        const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+        if (storedTheme) {
+            applyTheme(storedTheme);
+        } else {
+            applyTheme('stubbr');
+        }
+    } catch (_error) {
+        applyTheme('stubbr');
+    }
+
+    try {
+        if (localStorage.getItem(HERO_DISMISSED_STORAGE_KEY) === '1') {
+            heroModalOpen.value = false;
+        }
+    } catch (_error) {
+        // Ignore storage failures.
+    }
+    updatePhoneViewState();
+    window.addEventListener('resize', updatePhoneViewState);
     loadPanelWidth();
     const restored = loadBuilderHistoryFromStorage();
     await bootstrapToken();
@@ -1606,6 +1691,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+    window.removeEventListener('resize', updatePhoneViewState);
+    document.body.classList.remove('is-phone-view');
     stopSidebarResize();
     stopPanelResize();
     clearBuilderHistoryTimer();
@@ -1618,7 +1705,21 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="app-shell" :class="{ 'sidebar-open': sidebarOpen }" :style="{ gridTemplateColumns: shellGridTemplate }">
+    <div v-if="isPhoneView" class="mobile-only-shell">
+        <section class="mobile-only-hero">
+            <p class="hero-kicker">Mock API Playground</p>
+            <h1>This is <img :src="topbarLogoSrc" alt="Stubbr" class="hero-logo"></h1>
+            <p class="hero-copy">
+                Build production-ready requests from day one with smart mock responses powered by
+                <code>__instructions</code>.
+            </p>
+            <p class="mobile-only-note">
+                You need to use a computer to access the full functionality of this website.
+            </p>
+        </section>
+    </div>
+
+    <div v-else class="app-shell" :class="{ 'sidebar-open': sidebarOpen }" :style="{ gridTemplateColumns: shellGridTemplate }">
         <aside class="readme-sidebar">
             <div class="readme-icons">
                 <button
@@ -1714,6 +1815,14 @@ onUnmounted(() => {
                             <p class="readme-example-label">{{ example.label }}</p>
                             <pre><code v-html="highlightCodeText(example.code)"></code></pre>
                         </div>
+                        <button
+                            v-if="section.id === 'roadmap'"
+                            type="button"
+                            class="about-hero-link"
+                            @click="reopenHeroModal"
+                        >
+                            Open Intro Hero
+                        </button>
                     </section>
                 </div>
             </div>
@@ -1756,7 +1865,9 @@ onUnmounted(() => {
 
             <main ref="contentRef" class="content" :style="{ '--builder-width': `${builderWidthPercent}%` }">
                 <section class="panel builder-panel">
-                <h2>JSON Builder</h2>
+                <div class="panel-header-row">
+                    <h2>JSON Builder</h2>
+                </div>
 
                 <label for="api-endpoint">Endpoint</label>
                 <div class="endpoint-row">
@@ -1818,7 +1929,7 @@ onUnmounted(() => {
                         </button>
                     </aside>
 
-                    <div class="code-shell">
+                    <div class="code-shell syntax-tint">
                         <div class="code-line">{</div>
 
                         <div class="code-line filters-line">
@@ -1838,11 +1949,11 @@ onUnmounted(() => {
 
                         <div class="code-line structure-line">
                             <span class="line-prefix"><span class="indentation"></span></span>
-                            <span>"__instructions": {</span>
+                            <span class="json-keyword">"__instructions"</span><span class="json-punctuation">: {</span>
                         </div>
                         <div class="code-line structure-line">
                             <span class="line-prefix"><span class="indentation"></span><span class="indentation"></span></span>
-                            <span>"body": {</span>
+                            <span class="json-keyword">"body"</span><span class="json-punctuation">: {</span>
                         </div>
 
                         <div
@@ -1908,7 +2019,7 @@ onUnmounted(() => {
                                     class="code-input select-trigger format-select"
                                     @click="openPlaceholderPicker(row, $event)"
                                 >
-                                    <span>{{ row.placeholder }}</span>
+                                    <span class="json-placeholder">{{ row.placeholder }}</span>
                                     <span class="select-caret">v</span>
                                 </button>
 
@@ -2014,7 +2125,7 @@ onUnmounted(() => {
                                         </svg>
                                     </button>
                                     <div class="repeat-body" :class="{ 'repeat-line-muted': !row.repeatEnabled }">
-                                        <span>"__repeat":</span>
+                                        <span class="json-keyword">"__repeat"</span><span class="json-punctuation">:</span>
 
                                         <input
                                             v-model="row.repeat"
@@ -2089,7 +2200,7 @@ onUnmounted(() => {
                                             class="code-input select-trigger format-select"
                                             @click="openPlaceholderPicker(groupField, $event)"
                                         >
-                                            <span>{{ groupField.placeholder }}</span>
+                                            <span class="json-placeholder">{{ groupField.placeholder }}</span>
                                             <span class="select-caret">v</span>
                                         </button>
 
@@ -2183,7 +2294,7 @@ onUnmounted(() => {
                                                 </svg>
                                             </button>
                                             <div class="repeat-body" :class="{ 'repeat-line-muted': !groupField.repeatEnabled }">
-                                                <span>"__repeat":</span>
+                                                <span class="json-keyword">"__repeat"</span><span class="json-punctuation">:</span>
 
                                                 <input
                                                     v-model="groupField.repeat"
@@ -2251,7 +2362,7 @@ onUnmounted(() => {
                                                 class="code-input select-trigger format-select"
                                                 @click="openPlaceholderPicker(deepField, $event)"
                                             >
-                                                <span>{{ deepField.placeholder }}</span>
+                                                <span class="json-placeholder">{{ deepField.placeholder }}</span>
                                                 <span class="select-caret">v</span>
                                             </button>
 
@@ -2449,6 +2560,33 @@ onUnmounted(() => {
         </div>
 
         <div
+            v-if="heroModalOpen"
+            class="hero-modal-layer"
+        >
+            <div class="hero-modal" @click.stop>
+                <button type="button" class="hero-close" aria-label="Close hero" @click="closeHeroModal">x</button>
+                <p class="hero-kicker">Mock API Playground</p>
+                <h1>This is <img :src="topbarLogoSrc" alt="Stubbr" class="hero-logo"></h1>
+                <p class="hero-copy">
+                    Stop wasting time writing throwaway mocks. Stubbr lets you hit realistic endpoints from day one
+                    with payloads you can take straight into production.
+                </p>
+                <p class="hero-copy">
+                    Keep your real request contract, add <code>__instructions</code> for response shape, delay,
+                    status, repeat arrays, and random placeholder data. When backend is ready, switch host and keep
+                    moving.
+                </p>
+                <div class="hero-points">
+                    <p><strong>Fast setup:</strong> generate a token and start calling <code>/api/your/endpoint</code>.</p>
+                    <p><strong>Zero refactor later:</strong> same payload structure in dev and prod.</p>
+                    <p><strong>Built for frontend flow:</strong> pagination, repeat groups, faker values, cache control.</p>
+                    <p><strong>Made for iteration:</strong> tweak response behavior instantly and keep shipping UI.</p>
+                </div>
+                <button type="button" class="hero-cta">Start Building</button>
+            </div>
+        </div>
+
+        <div
             v-if="selectModalOpen"
             class="select-popover-layer"
             @click="closeSelectModal"
@@ -2467,6 +2605,37 @@ onUnmounted(() => {
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <button
+        class="theme-picker-button"
+        type="button"
+        aria-label="Select theme"
+        @click="themeMenuOpen = !themeMenuOpen"
+    >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2s6 6.3 6 10.6A6 6 0 0 1 6 12.6C6 8.3 12 2 12 2Z" />
+            <path d="M9.2 14.6a3 3 0 0 0 4.8 2.4" />
+        </svg>
+    </button>
+
+    <div
+        v-if="themeMenuOpen"
+        class="theme-picker-layer"
+        @click="themeMenuOpen = false"
+    >
+        <div class="theme-picker-menu" @click.stop>
+            <button
+                v-for="theme in themeOptions"
+                :key="theme.id"
+                type="button"
+                class="theme-picker-option"
+                :class="{ active: activeThemeId === theme.id }"
+                @click="selectTheme(theme.id)"
+            >
+                {{ theme.label }}
+            </button>
         </div>
     </div>
 </template>
