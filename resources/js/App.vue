@@ -1,9 +1,10 @@
 <script setup>
-import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 
 const token = ref('');
 const tokenLoading = ref(true);
-const endpoint = ref('/api/demo');
+const endpointPath = ref('demo');
+const requestMethod = ref('POST');
 const requestFieldsRef = ref(null);
 const isSending = ref(false);
 const statusLine = ref('Initializing token...');
@@ -21,6 +22,21 @@ const topbarLogoSrc = '/media/stubbr-logo-white.png';
 const filtersText = ref('');
 const filtersError = ref('');
 const builderError = ref('');
+const draggingRowId = ref(null);
+const dragOverRowId = ref(null);
+const dragSource = reactive({
+    rows: null,
+    index: -1,
+    rowId: null,
+});
+const builderHistory = ref([]);
+const builderHistoryIndex = ref(-1);
+const isApplyingBuilderHistory = ref(false);
+const canStepBack = computed(() => builderHistoryIndex.value > 0);
+const canStepForward = computed(() => builderHistoryIndex.value >= 0 && builderHistoryIndex.value < builderHistory.value.length - 1);
+const BUILDER_HISTORY_MAX = 30;
+const BUILDER_HISTORY_STORAGE_KEY = 'stubbr_builder_history_v1';
+let builderHistoryTimer = null;
 
 const placeholderOptionsByType = {
     string: [
@@ -52,6 +68,10 @@ const codeCopied = ref(false);
 const sidebarOpen = ref(false);
 const sidebarWidth = ref(450);
 const isResizingSidebar = ref(false);
+const contentRef = ref(null);
+const builderWidthPercent = ref(50);
+const isResizingPanels = ref(false);
+const PANEL_WIDTH_STORAGE_KEY = 'stubbr_panel_builder_width_percent_v1';
 const activeSidebarSectionId = ref('how-it-works');
 const readmePanelRef = ref(null);
 const sidebarSectionRefs = new Map();
@@ -388,19 +408,13 @@ const readmeSections = [
     },
     {
         id: 'roadmap',
-        title: 'Roadmap',
-        icon: 'map',
+        title: 'About',
+        icon: 'info',
         paragraphs: [
-            'Shipped and planned capabilities.',
+            'About this service.',
+            'Content coming soon.',
         ],
-        bullets: [
-            'Done: instant token generation, 40+ placeholders',
-            'Done: __repeat arrays and __uuid UUID7 mode',
-            'Done: adaptive rate limits and response caching',
-            'Planned: email-based token delivery',
-            'Planned: token verification requirement',
-            'Planned: usage analytics dashboard',
-        ],
+        bullets: [],
     },
 ];
 
@@ -411,8 +425,18 @@ const codeExampleLanguages = [
     { id: 'php', label: 'PHP' },
     { id: 'python', label: 'Python' },
 ];
+const httpMethodOptions = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
 
 const shellGridTemplate = computed(() => (sidebarOpen.value ? `${sidebarWidth.value}px minmax(0, 1fr)` : undefined));
+const endpointRoute = computed(() => {
+    let path = endpointPath.value.trim();
+    if (!path) return '/api/demo';
+    path = path.replace(/^\/+/, '');
+    if (path.toLowerCase().startsWith('api/')) {
+        path = path.slice(4);
+    }
+    return `/api/${path}`;
+});
 
 const nextRowId = ref(1);
 
@@ -570,6 +594,167 @@ const removeGroupField = (groupRow, fieldId) => {
     groupRow.rows = groupRow.rows.filter((row) => row.id !== fieldId);
 };
 
+const cloneValue = (value) => JSON.parse(JSON.stringify(value));
+
+const createBuilderStateSnapshot = () => ({
+    requestMethod: requestMethod.value,
+    endpointPath: endpointPath.value,
+    filtersText: filtersText.value,
+    instructions: cloneValue(instructions),
+    bodyRows: cloneValue(bodyRows.value),
+});
+
+const maxRowIdInRows = (rows) => rows.reduce((maxId, row) => {
+    const own = Math.max(maxId, Number(row.id) || 0);
+    if (row.kind === 'group' && Array.isArray(row.rows)) {
+        return Math.max(own, maxRowIdInRows(row.rows));
+    }
+    return own;
+}, 0);
+
+const clearBuilderHistoryTimer = () => {
+    if (!builderHistoryTimer) return;
+    window.clearTimeout(builderHistoryTimer);
+    builderHistoryTimer = null;
+};
+
+const persistBuilderHistory = () => {
+    try {
+        localStorage.setItem(BUILDER_HISTORY_STORAGE_KEY, JSON.stringify(builderHistory.value.slice(-BUILDER_HISTORY_MAX)));
+    } catch (_error) {
+        // Ignore storage quota / private mode failures.
+    }
+};
+
+const commitBuilderHistorySnapshot = () => {
+    if (isApplyingBuilderHistory.value) return;
+
+    const snapshot = createBuilderStateSnapshot();
+    const snapshotJson = JSON.stringify(snapshot);
+    const current = builderHistory.value[builderHistoryIndex.value];
+    if (current && JSON.stringify(current) === snapshotJson) {
+        return;
+    }
+
+    if (builderHistoryIndex.value < builderHistory.value.length - 1) {
+        builderHistory.value.splice(builderHistoryIndex.value + 1);
+    }
+
+    builderHistory.value.push(snapshot);
+    if (builderHistory.value.length > BUILDER_HISTORY_MAX) {
+        builderHistory.value = builderHistory.value.slice(-BUILDER_HISTORY_MAX);
+    }
+    builderHistoryIndex.value = builderHistory.value.length - 1;
+    persistBuilderHistory();
+};
+
+const scheduleBuilderHistorySnapshot = () => {
+    clearBuilderHistoryTimer();
+    builderHistoryTimer = window.setTimeout(() => {
+        commitBuilderHistorySnapshot();
+    }, 1000);
+};
+
+const applyBuilderHistoryState = (targetIndex) => {
+    const snapshot = builderHistory.value[targetIndex];
+    if (!snapshot) return;
+
+    isApplyingBuilderHistory.value = true;
+    clearBuilderHistoryTimer();
+    requestMethod.value = snapshot.requestMethod;
+    endpointPath.value = snapshot.endpointPath;
+    filtersText.value = snapshot.filtersText;
+    bodyRows.value = cloneValue(snapshot.bodyRows);
+    instructions.status.enabled = snapshot.instructions.status.enabled;
+    instructions.status.value = snapshot.instructions.status.value;
+    instructions.delay.enabled = snapshot.instructions.delay.enabled;
+    instructions.delay.value = snapshot.instructions.delay.value;
+    instructions.max_pages.enabled = snapshot.instructions.max_pages.enabled;
+    instructions.max_pages.value = snapshot.instructions.max_pages.value;
+    instructions.no_cache.enabled = snapshot.instructions.no_cache.enabled;
+    instructions.no_cache.value = snapshot.instructions.no_cache.value;
+    nextRowId.value = maxRowIdInRows(bodyRows.value) + 1;
+    builderHistoryIndex.value = targetIndex;
+
+    nextTick(() => {
+        autoGrowRequestFields();
+        isApplyingBuilderHistory.value = false;
+    });
+};
+
+const stepBuilderBack = () => {
+    if (!canStepBack.value) return;
+    applyBuilderHistoryState(builderHistoryIndex.value - 1);
+};
+
+const stepBuilderForward = () => {
+    if (!canStepForward.value) return;
+    applyBuilderHistoryState(builderHistoryIndex.value + 1);
+};
+
+const loadBuilderHistoryFromStorage = () => {
+    try {
+        const raw = localStorage.getItem(BUILDER_HISTORY_STORAGE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed) || !parsed.length) return false;
+        const history = parsed
+            .filter((entry) => entry && typeof entry === 'object' && Array.isArray(entry.bodyRows))
+            .slice(-BUILDER_HISTORY_MAX);
+        if (!history.length) return false;
+        builderHistory.value = history;
+        applyBuilderHistoryState(history.length - 1);
+        return true;
+    } catch (_error) {
+        return false;
+    }
+};
+
+const onRowDragStart = (rowId, rows, index, event) => {
+    dragSource.rows = rows;
+    dragSource.index = index;
+    dragSource.rowId = rowId;
+    draggingRowId.value = rowId;
+    dragOverRowId.value = null;
+    if (event?.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', String(rowId));
+    }
+};
+
+const onRowDragOver = (rowId, rows, _index, event) => {
+    if (dragSource.rows !== rows || dragSource.rowId === rowId) {
+        return;
+    }
+    dragOverRowId.value = rowId;
+    if (event?.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+    }
+};
+
+const onRowDrop = (rows, targetIndex) => {
+    if (dragSource.rows !== rows || dragSource.index < 0) {
+        return;
+    }
+    const fromIndex = dragSource.index;
+    if (fromIndex === targetIndex) {
+        return;
+    }
+
+    const [moved] = rows.splice(fromIndex, 1);
+    const insertAt = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    rows.splice(insertAt, 0, moved);
+    onRowDragEnd();
+};
+
+const onRowDragEnd = () => {
+    dragSource.rows = null;
+    dragSource.index = -1;
+    dragSource.rowId = null;
+    draggingRowId.value = null;
+    dragOverRowId.value = null;
+};
+
 const onTypeChange = (row) => {
     row.placeholder = defaultPlaceholderForType(row.type);
     if (!randomAllowed(row.type)) {
@@ -643,7 +828,8 @@ const sidebarIconElements = (name) => {
     if (name === 'key') return [
         { tag: 'circle', cx: 7, cy: 15, r: 3 },
         { tag: 'path', d: 'M10 15h11' },
-        { tag: 'path', d: 'M18 12v6' },
+        { tag: 'path', d: 'M18 12v3' },
+        { tag: 'path', d: 'M21 12v3' },
     ];
     if (name === 'sliders') return [
         { tag: 'line', x1: 4, y1: 21, x2: 4, y2: 14 },
@@ -695,6 +881,11 @@ const sidebarIconElements = (name) => {
         { tag: 'line', x1: 12, y1: 17, x2: 12, y2: 17.1 },
     ];
     if (name === 'wrench') return [{ tag: 'path', d: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18a2 2 0 1 0 2.8 2.8l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.1 2.1-2.8-2.8z' }];
+    if (name === 'info') return [
+        { tag: 'circle', cx: 12, cy: 12, r: 9 },
+        { tag: 'line', x1: 12, y1: 10, x2: 12, y2: 16 },
+        { tag: 'line', x1: 12, y1: 7, x2: 12, y2: 7.1 },
+    ];
     if (name === 'map') return [
         { tag: 'polygon', points: '1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6' },
         { tag: 'line', x1: 8, y1: 3, x2: 8, y2: 18 },
@@ -737,6 +928,51 @@ const startSidebarResize = (event) => {
     document.body.classList.add('is-resizing-sidebar');
     window.addEventListener('pointermove', onSidebarResizeMove);
     window.addEventListener('pointerup', stopSidebarResize);
+};
+
+const onPanelResizeMove = (event) => {
+    if (!isResizingPanels.value || !contentRef.value) return;
+    const rect = contentRef.value.getBoundingClientRect();
+    const relativeX = event.clientX - rect.left;
+    const nextPercent = (relativeX / rect.width) * 100;
+    builderWidthPercent.value = Math.max(25, Math.min(75, Number(nextPercent.toFixed(2))));
+};
+
+const persistPanelWidth = () => {
+    try {
+        localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(builderWidthPercent.value));
+    } catch (_error) {
+        // Ignore storage failures.
+    }
+};
+
+const loadPanelWidth = () => {
+    try {
+        const raw = localStorage.getItem(PANEL_WIDTH_STORAGE_KEY);
+        if (!raw) return;
+        const parsed = Number(raw);
+        if (!Number.isFinite(parsed)) return;
+        builderWidthPercent.value = Math.max(25, Math.min(75, Number(parsed.toFixed(2))));
+    } catch (_error) {
+        // Ignore parse failures.
+    }
+};
+
+const stopPanelResize = () => {
+    if (!isResizingPanels.value) return;
+    isResizingPanels.value = false;
+    document.body.classList.remove('is-resizing-panels');
+    window.removeEventListener('pointermove', onPanelResizeMove);
+    window.removeEventListener('pointerup', stopPanelResize);
+    persistPanelWidth();
+};
+
+const startPanelResize = (event) => {
+    event.preventDefault();
+    isResizingPanels.value = true;
+    document.body.classList.add('is-resizing-panels');
+    window.addEventListener('pointermove', onPanelResizeMove);
+    window.addEventListener('pointerup', stopPanelResize);
 };
 
 const bindSidebarSectionRef = (sectionId) => (el) => {
@@ -874,6 +1110,17 @@ const openBooleanPicker = (row, event) => {
     });
 };
 
+const openRequestMethodPicker = (event) => {
+    openSelectModal({
+        title: 'Select HTTP Method',
+        options: httpMethodOptions,
+        onPick: (value) => {
+            requestMethod.value = value;
+        },
+        anchorEl: event?.currentTarget,
+    });
+};
+
 const getRowKindOptionsByDepth = (depth) => (depth >= 2 ? ['field'] : rowKindOptions);
 
 const openRowKindPicker = (row, depth, event) => {
@@ -974,7 +1221,8 @@ const setResponseTextAndFadeIn = async (nextText, runId) => {
     });
 };
 
-const buildCodeSnippets = (payload, path, authToken) => {
+const buildCodeSnippets = (payload, path, authToken, method) => {
+    const upperMethod = method.toUpperCase();
     const bodyPretty = JSON.stringify(payload, null, 2);
     const bodyCompact = JSON.stringify(payload);
     const bodyPhp = bodyPretty.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
@@ -982,40 +1230,50 @@ const buildCodeSnippets = (payload, path, authToken) => {
     const authHeaderJs = JSON.stringify(authHeader);
     const authHeaderCurl = authHeader.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
     const authHeaderPhp = authHeader.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+    const allowsBody = !['GET', 'HEAD'].includes(upperMethod);
+    const bodyLineJs = allowsBody ? `,\n  body: JSON.stringify(${bodyPretty})` : '';
+    const curlBodyLine = allowsBody ? ` \\\n  -d '${bodyCompact}'` : '';
+    const axiosDataArg = allowsBody ? `,\n  data: ${bodyPretty}` : '';
+    const pythonMethod = upperMethod.toLowerCase();
+    const pythonRequest = allowsBody
+        ? `response = requests.${pythonMethod}('${path}', json=payload, headers=headers)`
+        : `response = requests.${pythonMethod}('${path}', headers=headers)`;
+    const phpBodyLine = allowsBody
+        ? `\ncurl_setopt($ch, CURLOPT_POSTFIELDS, '${bodyPhp}');`
+        : '';
 
     return {
-        curl: `curl -X POST ${path} \\
+        curl: `curl -X ${upperMethod} ${path} \\
   -H "Authorization: ${authHeaderCurl}" \\
-  -H "Content-Type: application/json" \\
-  -d '${bodyCompact}'`,
+  -H "Content-Type: application/json"${curlBodyLine}`,
         js: `const response = await fetch('${path}', {
-  method: 'POST',
+  method: '${upperMethod}',
   headers: {
     'Authorization': ${authHeaderJs},
     'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(${bodyPretty})
+  }${bodyLineJs}
 });
 
 const data = await response.json();`,
         axios: `import axios from 'axios';
 
-const response = await axios.post('${path}', ${bodyPretty}, {
+const response = await axios({
+  method: '${pythonMethod}',
+  url: '${path}',
   headers: {
     Authorization: ${authHeaderJs},
     'Content-Type': 'application/json'
-  }
+  }${axiosDataArg}
 });
 
 const data = response.data;`,
         php: `$ch = curl_init('${path}');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, '${upperMethod}');
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: ${authHeaderPhp}',
     'Content-Type: application/json'
-]);
-curl_setopt($ch, CURLOPT_POSTFIELDS, '${bodyPhp}');
+]);${phpBodyLine}
 
 $result = curl_exec($ch);
 curl_close($ch);`,
@@ -1027,20 +1285,20 @@ headers = {
     'Content-Type': 'application/json'
 }
 
-response = requests.post('${path}', json=payload, headers=headers)
+${pythonRequest}
 data = response.json()`,
     };
 };
 
 const codeSnippetText = computed(() => {
     const payload = payloadPreview.value;
-    const path = endpoint.value.trim() || '/api/demo';
+    const path = endpointRoute.value;
 
     if (!payload) {
         return '// Build a valid request body to see generated examples.';
     }
 
-    const snippets = buildCodeSnippets(payload, path, snippetToken.value);
+    const snippets = buildCodeSnippets(payload, path, snippetToken.value, requestMethod.value);
     return snippets[codeExampleLanguage.value] ?? snippets.curl;
 });
 
@@ -1250,6 +1508,14 @@ const payloadPreview = computed(() => {
     }
 });
 
+watch(
+    () => JSON.stringify(createBuilderStateSnapshot()),
+    () => {
+        if (isApplyingBuilderHistory.value) return;
+        scheduleBuilderHistorySnapshot();
+    },
+);
+
 const sendRequest = async () => {
     if (!token.value) {
         statusLine.value = 'No token available';
@@ -1276,12 +1542,18 @@ const sendRequest = async () => {
     };
     headers.Authorization = `Bearer ${token.value.trim()}`;
 
-    const requestUrl = endpoint.value.trim() || '/api/demo';
-    const doFetch = () => fetch(requestUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(parsedBody),
-    });
+    const requestUrl = endpointRoute.value;
+    const doFetch = () => {
+        const method = requestMethod.value.toUpperCase();
+        const init = {
+            method,
+            headers,
+        };
+        if (!['GET', 'HEAD'].includes(method)) {
+            init.body = JSON.stringify(parsedBody);
+        }
+        return fetch(requestUrl, init);
+    };
 
     try {
         const requestStartedAt = performance.now();
@@ -1318,10 +1590,15 @@ const sendRequest = async () => {
 };
 
 onMounted(async () => {
+    loadPanelWidth();
+    const restored = loadBuilderHistoryFromStorage();
     await bootstrapToken();
     nextTick(() => {
         autoGrowRequestFields();
         onReadmePanelScroll();
+        if (!restored) {
+            commitBuilderHistorySnapshot();
+        }
     });
     if (token.value) {
         await sendRequest();
@@ -1330,6 +1607,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
     stopSidebarResize();
+    stopPanelResize();
+    clearBuilderHistoryTimer();
     clearReadmeSnapTimer();
     if (readmeAutoScrollUnlockTimer) {
         window.clearTimeout(readmeAutoScrollUnlockTimer);
@@ -1475,17 +1754,52 @@ onUnmounted(() => {
                 <div class="nav-empty"></div>
             </nav>
 
-            <main class="content">
+            <main ref="contentRef" class="content" :style="{ '--builder-width': `${builderWidthPercent}%` }">
                 <section class="panel builder-panel">
                 <h2>JSON Builder</h2>
 
                 <label for="api-endpoint">Endpoint</label>
-                <input
-                    id="api-endpoint"
-                    v-model="endpoint"
-                    type="text"
-                    placeholder="/api/demo"
-                >
+                <div class="endpoint-row">
+                    <button
+                        type="button"
+                        class="code-input select-trigger method-select"
+                        @click="openRequestMethodPicker($event)"
+                    >
+                        <span>{{ requestMethod }}</span>
+                        <span class="select-caret">v</span>
+                    </button>
+                    <span class="endpoint-prefix">/api/</span>
+                    <input
+                        id="api-endpoint"
+                        v-model="endpointPath"
+                        type="text"
+                        placeholder="your/endpoint"
+                    >
+                    <div class="endpoint-history">
+                        <button
+                            type="button"
+                            class="endpoint-history-button"
+                            :disabled="!canStepBack"
+                            aria-label="Step back"
+                            @click="stepBuilderBack"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <polyline points="15 18 9 12 15 6" />
+                            </svg>
+                        </button>
+                        <button
+                            type="button"
+                            class="endpoint-history-button"
+                            :disabled="!canStepForward"
+                            aria-label="Step forward"
+                            @click="stepBuilderForward"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
 
                 <div class="builder-workspace">
                     <aside class="instruction-rail">
@@ -1534,6 +1848,13 @@ onUnmounted(() => {
                         <div
                             v-for="(row, index) in bodyRows"
                             :key="row.id"
+                            class="draggable-row"
+                            :class="{ 'drag-over': dragOverRowId === row.id, dragging: draggingRowId === row.id }"
+                            draggable="true"
+                            @dragstart="onRowDragStart(row.id, bodyRows, index, $event)"
+                            @dragover.prevent="onRowDragOver(row.id, bodyRows, index, $event)"
+                            @drop.prevent="onRowDrop(bodyRows, index)"
+                            @dragend="onRowDragEnd"
                         >
                             <div v-if="row.kind === 'field'" class="body-row">
                                 <span class="line-prefix"><span class="indentation"></span><span class="indentation"></span><span class="indentation"></span></span>
@@ -1611,16 +1932,28 @@ onUnmounted(() => {
 
                                 <span v-if="!row.random && row.type === 'null'" class="placeholder-view">null</span>
 
-                                <button type="button" class="icon-button" @click="removeBodyRow(row.id)" aria-label="Remove row">
-                                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                        <path d="M4 7h16" />
-                                        <path d="M10 11v6" />
-                                        <path d="M14 11v6" />
-                                        <path d="M6 7l1 13h10l1-13" />
-                                        <path d="M9 7V4h6v3" />
-                                    </svg>
-                                </button>
-                                <span v-if="index !== bodyRows.length - 1">,</span>
+                                <div class="row-actions">
+                                    <button type="button" class="icon-button" @click="removeBodyRow(row.id)" aria-label="Remove row">
+                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <path d="M4 7h16" />
+                                            <path d="M10 11v6" />
+                                            <path d="M14 11v6" />
+                                            <path d="M6 7l1 13h10l1-13" />
+                                            <path d="M9 7V4h6v3" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="drag-handle" aria-label="Drag row" @mousedown.stop>
+                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <circle cx="9" cy="7" r="1.2" />
+                                            <circle cx="15" cy="7" r="1.2" />
+                                            <circle cx="9" cy="12" r="1.2" />
+                                            <circle cx="15" cy="12" r="1.2" />
+                                            <circle cx="9" cy="17" r="1.2" />
+                                            <circle cx="15" cy="17" r="1.2" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span v-if="index !== bodyRows.length - 1" class="line-comma">,</span>
                             </div>
 
                             <div v-else class="group-block">
@@ -1643,16 +1976,28 @@ onUnmounted(() => {
                                     >
                                     <span>": {</span>
 
-                                    <button type="button" class="icon-button" @click="removeBodyRow(row.id)" aria-label="Remove group">
-                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                            <path d="M4 7h16" />
-                                            <path d="M10 11v6" />
-                                            <path d="M14 11v6" />
-                                            <path d="M6 7l1 13h10l1-13" />
-                                            <path d="M9 7V4h6v3" />
-                                        </svg>
-                                    </button>
-                                    <span v-if="index !== bodyRows.length - 1">,</span>
+                                    <div class="row-actions">
+                                        <button type="button" class="icon-button" @click="removeBodyRow(row.id)" aria-label="Remove group">
+                                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                <path d="M4 7h16" />
+                                                <path d="M10 11v6" />
+                                                <path d="M14 11v6" />
+                                                <path d="M6 7l1 13h10l1-13" />
+                                                <path d="M9 7V4h6v3" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="drag-handle" aria-label="Drag group" @mousedown.stop>
+                                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                <circle cx="9" cy="7" r="1.2" />
+                                                <circle cx="15" cy="7" r="1.2" />
+                                                <circle cx="9" cy="12" r="1.2" />
+                                                <circle cx="15" cy="12" r="1.2" />
+                                                <circle cx="9" cy="17" r="1.2" />
+                                                <circle cx="15" cy="17" r="1.2" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <span v-if="index !== bodyRows.length - 1" class="line-comma">,</span>
                                 </div>
 
                                 <div class="body-row nested-row repeat-toggle-row">
@@ -1684,6 +2029,13 @@ onUnmounted(() => {
                                 <div
                                     v-for="(groupField, gIndex) in row.rows"
                                     :key="groupField.id"
+                                    class="draggable-row"
+                                    :class="{ 'drag-over': dragOverRowId === groupField.id, dragging: draggingRowId === groupField.id }"
+                                    draggable="true"
+                                    @dragstart="onRowDragStart(groupField.id, row.rows, gIndex, $event)"
+                                    @dragover.prevent="onRowDragOver(groupField.id, row.rows, gIndex, $event)"
+                                    @drop.prevent="onRowDrop(row.rows, gIndex)"
+                                    @dragend="onRowDragEnd"
                                 >
                                     <div v-if="groupField.kind === 'field'" class="body-row nested-row">
                                         <span class="line-prefix"><span class="indentation"></span><span class="indentation"></span><span class="indentation"></span><span class="indentation"></span></span>
@@ -1761,16 +2113,28 @@ onUnmounted(() => {
 
                                         <span v-if="!groupField.random && groupField.type === 'null'" class="placeholder-view">null</span>
 
-                                        <button type="button" class="icon-button" @click="removeGroupField(row, groupField.id)" aria-label="Remove row">
-                                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                                <path d="M4 7h16" />
-                                                <path d="M10 11v6" />
-                                                <path d="M14 11v6" />
-                                                <path d="M6 7l1 13h10l1-13" />
-                                                <path d="M9 7V4h6v3" />
-                                            </svg>
-                                        </button>
-                                        <span v-if="gIndex !== row.rows.length - 1">,</span>
+                                        <div class="row-actions">
+                                            <button type="button" class="icon-button" @click="removeGroupField(row, groupField.id)" aria-label="Remove row">
+                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <path d="M4 7h16" />
+                                                    <path d="M10 11v6" />
+                                                    <path d="M14 11v6" />
+                                                    <path d="M6 7l1 13h10l1-13" />
+                                                    <path d="M9 7V4h6v3" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" class="drag-handle" aria-label="Drag row" @mousedown.stop>
+                                                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <circle cx="9" cy="7" r="1.2" />
+                                                    <circle cx="15" cy="7" r="1.2" />
+                                                    <circle cx="9" cy="12" r="1.2" />
+                                                    <circle cx="15" cy="12" r="1.2" />
+                                                    <circle cx="9" cy="17" r="1.2" />
+                                                    <circle cx="15" cy="17" r="1.2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <span v-if="gIndex !== row.rows.length - 1" class="line-comma">,</span>
                                     </div>
 
                                     <div v-else class="group-block nested-row">
@@ -1802,7 +2166,7 @@ onUnmounted(() => {
                                                     <path d="M9 7V4h6v3" />
                                                 </svg>
                                             </button>
-                                            <span v-if="gIndex !== row.rows.length - 1">,</span>
+                                            <span v-if="gIndex !== row.rows.length - 1" class="line-comma">,</span>
                                         </div>
 
                                         <div class="body-row nested-row repeat-toggle-row">
@@ -1920,7 +2284,7 @@ onUnmounted(() => {
                                                     <path d="M9 7V4h6v3" />
                                                 </svg>
                                             </button>
-                                            <span v-if="deepIndex !== groupField.rows.length - 1">,</span>
+                                            <span v-if="deepIndex !== groupField.rows.length - 1" class="line-comma">,</span>
                                         </div>
 
                                         <div class="code-line nested-row add-row-line">
@@ -2042,6 +2406,15 @@ onUnmounted(() => {
                     {{ tokenLoading ? 'Preparing token...' : (isSending ? 'Sending...' : 'Send request') }}
                 </button>
                 </section>
+
+                <button
+                    type="button"
+                    class="panel-resize-handle"
+                    aria-label="Resize builder and response panels"
+                    @pointerdown="startPanelResize"
+                >
+                    <span class="panel-resize-grip"></span>
+                </button>
 
                 <section class="panel response-panel">
                     <h2>Request Response</h2>
