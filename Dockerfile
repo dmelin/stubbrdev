@@ -31,6 +31,7 @@ RUN composer install --optimize-autoloader --no-dev --no-scripts
 # Copy the rest of the application
 COPY . .
 COPY --from=frontend-build /app/public/build ./public/build
+RUN rm -f public/hot
 
 # Run post-install scripts
 RUN composer dump-autoload --optimize

@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Cloud Run sits behind a proxy/load balancer, so trust forwarded headers.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'adaptiveThrottle' => AdaptiveThrottle::class,
             'throttle.token' => ThrottleTokenRequests::class,
