@@ -1,3 +1,14 @@
+FROM node:22-alpine AS frontend-build
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY resources ./resources
+COPY vite.config.js ./
+RUN npm run build
+
 FROM php:8.2-cli
 
 # Install system dependencies
@@ -19,6 +30,7 @@ RUN composer install --optimize-autoloader --no-dev --no-scripts
 
 # Copy the rest of the application
 COPY . .
+COPY --from=frontend-build /app/public/build ./public/build
 
 # Run post-install scripts
 RUN composer dump-autoload --optimize

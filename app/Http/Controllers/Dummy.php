@@ -101,6 +101,8 @@ class Dummy extends Controller
         }
 
         $returnBody = $this->applyRepeats($returnBody);
+        $fakerIndex = 0;
+        $returnBody = $this->applyFaker($returnBody, $fakerIndex);
 
         if ($this->hasPagination) {
             $this->currentPage = (isset($_GET['page'])) ? $_GET['page'] : 1;
