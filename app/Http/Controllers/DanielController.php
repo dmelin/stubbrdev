@@ -20,6 +20,12 @@ class DanielController extends Controller
             return response()->json(['error' => 'Not found'], 404);
         }
 
+        // Validate origin
+        $origin = $request->header('Origin');
+        if (!$origin || !$this->isAllowedOrigin($origin)) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
         // Get the incoming contents
         $contents = $request->input('contents');
 
@@ -29,12 +35,17 @@ class DanielController extends Controller
 
         // Get environment variables
         $geminiApiKey = env('GEMINI_API_KEY');
-        $systemPrompt = env('DANIEL_SYSTEM_PROMPT', '');
 
         if (!$geminiApiKey) {
             Log::error('GEMINI_API_KEY not configured');
             return response()->json(['error' => 'Service configuration error'], 502);
         }
+
+        // Read system prompt from file
+        $systemPromptPath = storage_path('app/daniel_system_prompt.txt');
+        $systemPrompt = file_exists($systemPromptPath)
+            ? file_get_contents($systemPromptPath)
+            : '';
 
         // Build the Gemini API request payload
         $payload = [
@@ -72,6 +83,19 @@ class DanielController extends Controller
             ]);
             return response()->json(['error' => 'Service unavailable'], 502);
         }
+    }
+
+    private function isAllowedOrigin(string $origin): bool
+    {
+        $parsed = parse_url($origin);
+        if (!$parsed || !isset($parsed['host'])) {
+            return false;
+        }
+
+        $host = $parsed['host'];
+
+        // Allow dmelin.github.io and dmelin.github.io.test
+        return $host === 'dmelin.github.io' || $host === 'dmelin.github.io.test';
     }
 
     private function corsResponse($data = null)
