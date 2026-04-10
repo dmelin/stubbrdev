@@ -17,7 +17,11 @@ const ownTokenError = ref('');
 const ownTokenVisible = ref(false);
 const responseFadeMs = 300;
 let responseFadeRun = 0;
-const topbarLogoSrc = '/media/stubbr-logo-white.png';
+const topbarLogoSrc = computed(() => (
+    activeThemeId.value === 'ice'
+        ? '/media/stubbr-logo-black.png'
+        : '/media/stubbr-logo-white.png'
+));
 
 const filtersText = ref('');
 const filtersError = ref('');
@@ -190,6 +194,7 @@ const randomizerTableTabs = [
 const readmeTabBySection = reactive({
     randomizers: randomizerTableTabs[0].id,
 });
+const endpointPrefixText = computed(() => '/api/');
 
 const readmeSections = [
     {
@@ -1879,7 +1884,7 @@ onUnmounted(() => {
                         <span>{{ requestMethod }}</span>
                         <span class="select-caret">v</span>
                     </button>
-                    <span class="endpoint-prefix">/api/</span>
+                    <span class="endpoint-prefix">{{ endpointPrefixText }}</span>
                     <input
                         id="api-endpoint"
                         v-model="endpointPath"

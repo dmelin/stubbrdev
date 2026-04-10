@@ -418,6 +418,16 @@ body.is-phone-view .theme-picker-menu {
     line-height: 1.55;
 }
 
+.readme-panel a {
+    color: var(--accent);
+    text-decoration-color: color-mix(in srgb, var(--accent) 70%, transparent);
+    text-underline-offset: 2px;
+}
+
+.readme-panel a:hover {
+    color: var(--text);
+}
+
 .readme-sections {
     padding: 0 14px 14px;
 }
@@ -476,7 +486,7 @@ body.is-phone-view .theme-picker-menu {
     margin-top: 10px;
     border: 0;
     background: transparent;
-    color: #9fc2ff;
+    color: var(--accent);
     font: inherit;
     font-size: 0.76rem;
     text-decoration: underline;
@@ -1336,10 +1346,9 @@ body.is-phone-view .theme-picker-menu {
 
 .code-example-toolbar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    align-items: flex-end;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .code-example-switches {
@@ -1348,7 +1357,10 @@ body.is-phone-view .theme-picker-menu {
     gap: 8px;
     overflow-x: auto;
     padding-bottom: 2px;
+    flex: 0 1 auto;
+    min-width: 0;
 }
+
 
 .code-switch {
     border: 0;
@@ -1478,7 +1490,7 @@ body.is-phone-view .theme-picker-menu {
 .hero-modal-layer {
     position: fixed;
     inset: 0;
-    background: rgba(5, 10, 20, 0.58);
+    background: color-mix(in srgb, var(--bg-panel) 66%, transparent);
     -webkit-backdrop-filter: blur(6px);
     backdrop-filter: blur(6px);
     z-index: 260;
@@ -1490,9 +1502,14 @@ body.is-phone-view .theme-picker-menu {
 
 .hero-modal {
     width: min(980px, 100%);
-    border: 1px solid #2f446b;
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: radial-gradient(circle at 16% 14%, #2d4f8f 0%, #1a2c4b 34%, #111a2e 100%);
+    background: radial-gradient(
+        circle at 16% 14%,
+        color-mix(in srgb, var(--accent) 40%, var(--bg-panel-2) 60%) 0%,
+        var(--bg-panel-2) 36%,
+        var(--bg-panel) 100%
+    );
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
     padding: 28px 30px 26px;
     position: relative;
@@ -1506,14 +1523,14 @@ body.is-phone-view .theme-picker-menu {
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    color: #d5e2ff;
+    background: color-mix(in srgb, var(--bg-panel-3) 80%, transparent);
+    color: var(--text);
     cursor: pointer;
 }
 
 .hero-kicker {
     margin: 0 0 8px;
-    color: #a6c0f8;
+    color: var(--accent);
     font-size: 0.75rem;
     letter-spacing: 0.11em;
     text-transform: uppercase;
@@ -1524,8 +1541,8 @@ body.is-phone-view .theme-picker-menu {
     margin: 0;
     font-size: clamp(2rem, 5vw, 3.4rem);
     line-height: 1.05;
-    color: #f2f7ff;
-    text-shadow: 0 0 28px rgba(125, 207, 255, 0.2);
+    color: var(--text);
+    text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .hero-logo {
@@ -1539,22 +1556,26 @@ body.is-phone-view .theme-picker-menu {
 .hero-copy {
     margin: 14px 0 0;
     max-width: 78ch;
-    color: #c1cde7;
+    color: var(--text-dim);
     line-height: 1.6;
     font-size: 0.98rem;
 }
 
 .hero-copy code {
     font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-    color: #9ece6a;
+    color: var(--token-string);
 }
 
 .hero-cta {
     margin-top: 16px;
     border: 0;
     border-radius: 10px;
-    background: linear-gradient(90deg, #5f88ff 0%, #7dcfff 100%);
-    color: #0f1a2d;
+    background: linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--accent) 72%, #ffffff 0%) 0%,
+        color-mix(in srgb, var(--accent) 48%, #ffffff 18%) 100%
+    );
+    color: var(--bg-panel);
     font-weight: 700;
     padding: 10px 14px;
     cursor: pointer;
@@ -1571,14 +1592,14 @@ body.is-phone-view .theme-picker-menu {
     margin: 0;
     padding: 10px 12px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.06);
-    color: #d7e3ff;
+    background: color-mix(in srgb, var(--bg-panel-3) 72%, transparent);
+    color: var(--text-dim);
     line-height: 1.45;
     font-size: 0.88rem;
 }
 
 .hero-points strong {
-    color: #f0f6ff;
+    color: var(--text);
 }
 
 @media (max-width: 960px) {
