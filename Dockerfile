@@ -1,49 +1,54 @@
-FROM node:22-alpine AS frontend-build
+# syntax=docker/dockerfile:1
 
+FROM node:22-alpine AS frontend
 WORKDIR /app
-
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json vite.config.js ./
 RUN npm ci
-
 COPY resources ./resources
-COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.2-cli
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpng-dev libjpeg-dev libonig-dev libxml2-dev zip unzip git curl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+FROM php:8.3-apache AS app
 
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
+    PORT=8080
 
-# Set working directory
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl unzip libzip-dev \
+    && docker-php-ext-install -j"$(nproc)" pdo_mysql bcmath opcache pcntl zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" \
+    && a2enmod rewrite headers \
+    && sed -ri 's/^Listen 80$/Listen ${PORT}/' /etc/apache2/ports.conf \
+    && sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+COPY docker/php.ini "$PHP_INI_DIR/conf.d/zz-app.ini"
+COPY docker/vhost.conf /etc/apache2/sites-available/000-default.conf
+
 WORKDIR /var/www/html
 
-# Copy composer files first
 COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
 
-# Install PHP dependencies
-RUN composer install --optimize-autoloader --no-dev --no-scripts
-
-# Copy the rest of the application
 COPY . .
-COPY --from=frontend-build /app/public/build ./public/build
-RUN rm -f public/hot
+COPY --from=frontend /app/public/build ./public/build
 
-# Run post-install scripts
-RUN composer dump-autoload --optimize
+RUN composer dump-autoload --optimize --classmap-authoritative --no-dev \
+    && chmod -R a+rX . \
+    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
+    && chown -R www-data:www-data storage bootstrap/cache \
+    && rm -f public/hot
 
-# Laravel-specific setup
-RUN mkdir -p database
-RUN touch database/database.sqlite
-
-# Ensure storage and bootstrap/cache are writable
-RUN chmod -R 775 storage bootstrap/cache
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint
+RUN chmod +x /usr/local/bin/entrypoint
 
 EXPOSE 8080
 
-# Cache config at startup when env vars are present, then start server
-CMD ["sh", "-c", "php artisan config:cache && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=8080"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT}/up" >/dev/null || exit 1
+
+ENTRYPOINT ["entrypoint"]
+CMD ["apache2-foreground"]

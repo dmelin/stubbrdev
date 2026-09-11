@@ -6,6 +6,32 @@ A mock API service that lets you build frontend applications with realistic API 
 
 ---
 
+---
+
+## Running with Docker
+
+The image is a multi-stage build: Node builds the Vite assets, then a
+`php:8.3-apache` image installs Composer dependencies and serves `public/`
+on port 8080. On start the container waits for MySQL, runs migrations and
+caches config, routes and views.
+
+```bash
+cp .env.deploy.example .env   # fill in APP_KEY, passwords, GEMINI_API_KEY
+docker compose up -d --build
+```
+
+`compose.yaml` runs the app and a private MySQL 8.4 with a named volume.
+All Laravel settings are fixed in `compose.yaml`; `.env` only holds secrets
+and the hostname (`PROJECT_NAME`, `BASE_DOMAIN`, `APP_URL`). The app joins an
+external `proxy` network with Traefik labels; create it with
+`docker network create proxy` if no proxy is running.
+
+Generate an `APP_KEY` with:
+
+```bash
+php artisan key:generate --show
+```
+
 ## How It Works
 
 Stubbr lets you write production-ready API calls from day one. Your request has two parts:

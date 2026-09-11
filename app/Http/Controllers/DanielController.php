@@ -34,7 +34,7 @@ class DanielController extends Controller
         }
 
         // Get environment variables
-        $geminiApiKey = env('GEMINI_API_KEY');
+        $geminiApiKey = config('services.gemini.key');
 
         if (!$geminiApiKey) {
             Log::error('GEMINI_API_KEY not configured');

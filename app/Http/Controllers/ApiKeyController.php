@@ -96,7 +96,7 @@ class ApiKeyController extends Controller
 
     private function hashEmail($email)
     {
-        return hash_hmac('sha256', strtolower(trim($email)), env('EMAIL_HASH_SECRET'));
+        return hash_hmac('sha256', strtolower(trim($email)), config('services.email_hash.secret'));
     }
 
 }
