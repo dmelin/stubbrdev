@@ -16,7 +16,7 @@ on port 8080. On start the container waits for MySQL, runs migrations and
 caches config, routes and views.
 
 ```bash
-cp .env.deploy.example .env   # fill in APP_KEY, passwords, GEMINI_API_KEY
+cp .env.deploy.example .env   # fill in APP_KEY, passwords
 docker compose up -d --build
 ```
 

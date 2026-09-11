@@ -32,7 +32,6 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@stubbr.dev}
       MAIL_FROM_NAME: Stubbr
       EMAIL_HASH_SECRET: ${EMAIL_HASH_SECRET:?EMAIL_HASH_SECRET missing in .env}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     networks:
       - default
       - proxy

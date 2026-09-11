@@ -13,9 +13,6 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function () {
-            Route::middleware('web')
-                ->group(base_path('routes/daniel.php'));
-
             Route::middleware('api')
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
@@ -28,10 +25,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'adaptiveThrottle' => AdaptiveThrottle::class,
             'throttle.token' => ThrottleTokenRequests::class,
-        ]);
-
-        $middleware->validateCsrfTokens(except: [
-            'daniel/*',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
