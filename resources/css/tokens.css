@@ -1,0 +1,97 @@
+/* Design tokens — dark is the default, light overrides a subset. */
+
+:root,
+[data-theme='dark'] {
+    color-scheme: dark;
+
+    --bg: #14121a;
+    --surface: #1a1723;
+    --surface-2: #221e2d;
+    --surface-3: #2a2536;
+    --border: #2a2635;
+    --border-strong: #37324a;
+
+    --text: #f4f1fa;
+    --text-2: #a49cbb;
+    --text-3: #7b7292;
+
+    --accent: #ffe14d;
+    --on-accent: #191621;
+    --ok: #8ce3b0;
+    --warn: #ffb0c8;
+    --info: #b6a8f0;
+
+    /* Semantic hues used as text. Identical to the fills in dark mode,
+       darkened in light mode so they keep 4.5:1 on light surfaces. */
+    --ok-text: var(--ok);
+    --warn-text: var(--warn);
+    --info-text: var(--info);
+    --accent-text: var(--accent);
+
+    --ok-tint: #1d2b25;
+    --warn-tint: #33202b;
+    --info-tint: #252036;
+    --accent-tint: #241f33;
+    --neutral-tint: #1c1926;
+
+    --shadow-float: 0 22px 50px rgba(0, 0, 0, 0.4);
+
+    --font-display: 'Bricolage Grotesque', 'Space Grotesk', system-ui, sans-serif;
+    --font-ui: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --r-sm: 8px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 16px;
+    --r-pill: 999px;
+}
+
+[data-theme='light'] {
+    color-scheme: light;
+
+    --bg: #faf8f4;
+    --surface: #ffffff;
+    --surface-2: #f4f1ea;
+    --surface-3: #ebe6db;
+    --border: #e3ded3;
+    --border-strong: #c9c2b3;
+
+    --text: #191621;
+    --text-2: #5b5468;
+    --text-3: #7a7288;
+
+    --ok-text: #1f7a4c;
+    --warn-text: #b23a63;
+    --info-text: #5b48b5;
+    --accent-text: #7d6300;
+
+    --ok-tint: #e3f5ea;
+    --warn-tint: #fce4ec;
+    --info-tint: #ebe6fb;
+    --accent-tint: #fff4bf;
+    --neutral-tint: #efeae0;
+
+    --shadow-float: 0 22px 50px rgba(25, 22, 33, 0.18);
+}
+
+/* Code wells are always dark, in both themes. */
+.code-well,
+.code-well-tokens {
+    --code-bg: #131019;
+    --code-border: #221e2d;
+    --code-text: #b3abc9;
+    --code-dim: #6d6582;
+    --code-key: #8ce3b0;
+    --code-number: #ffe14d;
+    --code-string: #ffb0c8;
+    --code-bool: #b6a8f0;
+    --code-null: #7b7292;
+    --code-punct: #7b7292;
+    --code-input-bg: #1c1926;
+    --code-input-bg-2: #252036;
+    --code-surface: #1a1723;
+    --code-border-strong: #37324a;
+    --code-text-strong: #f4f1fa;
+    color-scheme: dark;
+}

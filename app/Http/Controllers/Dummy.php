@@ -6,7 +6,9 @@ use Illuminate\Http\Request;
 use Faker\Generator as Faker;
 use Illuminate\Support\Str;
 use App\Models\RequestCache;
+use Illuminate\Support\Facades\Cache;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class Dummy extends Controller
 {
@@ -51,17 +53,23 @@ class Dummy extends Controller
         ];
         $fingerPrint = hash('sha256', json_encode($fingerPrint));
 
-        $hasCache = RequestCache::where('fingerprint', $fingerPrint)->first() ?? false;
+        $instructions = isset($body->__instructions) && is_object($body->__instructions)
+            ? $body->__instructions
+            : null;
+
+        // Flaky endpoints are never cached: every call has to roll again.
+        $flaky = $this->parseFlaky($instructions);
+        $skipCache = !empty($instructions->no_cache) || $flaky !== null;
+
+        $hasCache = $skipCache ? false : (RequestCache::where('fingerprint', $fingerPrint)->first() ?? false);
 
         if ($hasCache) {
+            // A cached reply must still feel as slow as the first one.
+            $this->applyDelay($instructions);
             $cacheContent = json_decode($hasCache->content);
             $cacheContent->headers['__from_cache'] = true;
             return response()->json($cacheContent->body, $cacheContent->status, $cacheContent->headers);
         }
-
-        $instructions = isset($body->__instructions) && is_object($body->__instructions)
-            ? $body->__instructions
-            : null;
 
         $responseStatus = 200;
         $responseHeaders = [];
@@ -69,10 +77,7 @@ class Dummy extends Controller
         $returnBody = $body;
 
         if (!empty($instructions)) {
-            if (!empty($instructions->delay)) {
-                $delay = min((int) $instructions->delay, 5000);
-                usleep($delay * 1000);
-            }
+            $this->applyDelay($instructions);
 
             if (!empty($instructions->status)) {
                 $responseStatus = $instructions->status;
@@ -94,6 +99,13 @@ class Dummy extends Controller
                 $this->hasPagination = true;
                 $this->maxPages = $instructions->max_pages;
             }
+        }
+
+        if ($flaky !== null) {
+            if ($this->flakyShouldFail($flaky, $token, $request)) {
+                return $this->flakyFailure($flaky, $request);
+            }
+            $responseHeaders['__flaky'] = 'passed';
         }
 
         if (isset($_GET['page'])) {
@@ -120,7 +132,7 @@ class Dummy extends Controller
             ];
         }
 
-        if (empty($instructions->no_cache)) {
+        if (!$skipCache) {
             $cacheContent = [
                 'body' => $returnBody,
                 'status' => $responseStatus,
@@ -141,6 +153,86 @@ class Dummy extends Controller
         }
 
         return response()->json($returnBody, $responseStatus, $responseHeaders);
+    }
+
+    /**
+     * Normalise the `flaky` instruction.
+     *
+     *  true                          -> 50% of calls fail with a default 5xx/429 code
+     *  { every: n, codes: [...] }    -> every nth call fails with one of the codes
+     *
+     * Returns null when the instruction is absent or falsy.
+     */
+    protected function parseFlaky(?object $instructions): ?array
+    {
+        if (empty($instructions) || !isset($instructions->flaky) || !$instructions->flaky) {
+            return null;
+        }
+
+        $defaultCodes = [500, 502, 503, 504, 429];
+        $flaky = ['every' => null, 'codes' => $defaultCodes];
+
+        $raw = $instructions->flaky;
+        if (is_object($raw) || is_array($raw)) {
+            $raw = (array) $raw;
+
+            if (isset($raw['every']) && is_numeric($raw['every']) && (int) $raw['every'] >= 1) {
+                $flaky['every'] = (int) $raw['every'];
+            }
+
+            if (isset($raw['codes'])) {
+                $codes = is_array($raw['codes']) ? $raw['codes'] : [$raw['codes']];
+                $codes = array_values(array_unique(array_filter(
+                    array_map(fn ($code) => is_numeric($code) ? (int) $code : 0, $codes),
+                    // A "failure" that succeeds only confuses retry logic.
+                    fn ($code) => $code >= 300 && $code <= 599,
+                )));
+                if ($codes) {
+                    $flaky['codes'] = $codes;
+                }
+            }
+        }
+
+        return $flaky;
+    }
+
+    protected function flakyShouldFail(array $flaky, ?string $token, Request $request): bool
+    {
+        if ($flaky['every'] === null) {
+            return random_int(1, 100) <= 50;
+        }
+
+        // Counted per token, method and path so it keeps counting across
+        // different bodies and query strings.
+        $key = 'flaky_' . hash('sha256', implode('|', [$token, $request->method(), $request->path()]));
+        Cache::add($key, 0, now()->addHour());
+        $count = Cache::increment($key);
+
+        return $count % $flaky['every'] === 0;
+    }
+
+    protected function flakyFailure(array $flaky, Request $request)
+    {
+        $code = $flaky['codes'][array_rand($flaky['codes'])];
+        $reason = SymfonyResponse::$statusTexts[$code] ?? 'Error';
+
+        $headers = ['__flaky' => 'failed'];
+        if ($code >= 300 && $code < 400) {
+            $headers['Location'] = $request->fullUrl();
+        }
+
+        return response()->json(['error' => $reason, 'code' => $code], $code, $headers);
+    }
+
+    protected function applyDelay(?object $instructions): void
+    {
+        if (empty($instructions) || empty($instructions->delay)) {
+            return;
+        }
+        $delay = min((int) $instructions->delay, 5000);
+        if ($delay > 0) {
+            usleep($delay * 1000);
+        }
     }
 
     protected function applyRepeats($data, $repeatCount = 0, ?string $parentKey = null, bool $useUuid = false)

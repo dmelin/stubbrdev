@@ -3,9 +3,6 @@ services:
     build: .
     image: stubbrdev:latest
     restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
     environment:
       APP_NAME: Stubbr
       APP_ENV: production
@@ -15,10 +12,10 @@ services:
       LOG_CHANNEL: stderr
       LOG_LEVEL: ${LOG_LEVEL:-warning}
       DB_CONNECTION: mysql
-      DB_HOST: mysql
+      DB_HOST: ${DB_HOST:-mariadb}
       DB_PORT: "3306"
-      DB_DATABASE: stubbr
-      DB_USERNAME: stubbr
+      DB_DATABASE: ${DB_DATABASE:-stubbr}
+      DB_USERNAME: ${DB_USERNAME:-stubbr}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing in .env}
       SESSION_DRIVER: database
       CACHE_STORE: database
@@ -35,32 +32,15 @@ services:
     networks:
       - default
       - proxy
+      - db
     labels:
       - traefik.enable=true
       - traefik.http.routers.${PROJECT_NAME}.rule=Host(`${PROJECT_NAME}.${BASE_DOMAIN}`)
       - traefik.http.routers.${PROJECT_NAME}.entrypoints=web,websecure
       - traefik.http.services.${PROJECT_NAME}.loadbalancer.server.port=8080
 
-  mysql:
-    image: mysql:8.4
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: stubbr
-      MYSQL_USER: stubbr
-      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD missing in .env}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD missing in .env}
-    volumes:
-      - mysql-data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 20s
-
-volumes:
-  mysql-data:
-
 networks:
   proxy:
+    external: true
+  db:
     external: true

@@ -1,0 +1,90 @@
+// Placeholder reference, grouped by category. Mirrors the backend Faker map.
+export const GENERATOR_GROUPS = [
+    {
+        id: 'personal',
+        label: 'Personal',
+        items: [
+            ['?name', 'Full name', 'Jane Smith'],
+            ['?firstName', 'First name', 'John'],
+            ['?lastName', 'Last name', 'Doe'],
+            ['?email', 'Email address', 'john@example.com'],
+            ['?username', 'Username', 'john_doe_92'],
+            ['?phone', 'Phone number', '+1-555-123-4567'],
+            ['?company', 'Company name', 'Acme Corp'],
+            ['?jobTitle', 'Job title', 'Software Engineer'],
+        ],
+    },
+    {
+        id: 'address',
+        label: 'Address',
+        items: [
+            ['?address', 'Full address', '742 Evergreen Terrace, Springfield'],
+            ['?street', 'Street address', '123 Main Street'],
+            ['?city', 'City', 'New York'],
+            ['?state', 'State', 'California'],
+            ['?zip', 'Postal code', '90210'],
+            ['?country', 'Country', 'United States'],
+        ],
+    },
+    {
+        id: 'numbers',
+        label: 'Numbers',
+        items: [
+            ['?number', '1 to 10 000', '4721'],
+            ['?numberSmall', '1 to 10', '7'],
+            ['?numberLarge', '10 000 to 1 000 000', '842531'],
+            ['?decimal', 'Decimal', '342.87'],
+            ['?price', 'Price', '49.99'],
+            ['?id', 'ID number', '12345'],
+            ['?counter', 'Increments across the whole response', '0, 1, 2…'],
+            ['?timestamp', 'Unix timestamp', '1710514200'],
+        ],
+    },
+    {
+        id: 'text',
+        label: 'Text',
+        items: [
+            ['?word', 'Single word', 'example'],
+            ['?sentence', 'One sentence', 'This is a sample sentence.'],
+            ['?paragraph', 'One paragraph', 'Lorem ipsum dolor sit amet…'],
+            ['?text', 'About 200 characters', 'Lorem ipsum dolor…'],
+            ['?lorem', 'Lorem sentence', 'Lorem ipsum dolor sit amet.'],
+            ['?loremShort', 'Three words', 'lorem ipsum dolor'],
+            ['?loremLong', 'Several paragraphs', 'Lorem ipsum…'],
+        ],
+    },
+    {
+        id: 'internet',
+        label: 'Internet',
+        items: [
+            ['?url', 'URL', 'https://example.com/path'],
+            ['?domain', 'Domain', 'example.com'],
+            ['?ip', 'IPv4 address', '192.168.1.1'],
+            ['?slug', 'URL slug', 'sample-slug-text'],
+            ['?image', 'Image URL, 640×480', 'https://…/640x480'],
+            ['?avatar', 'Avatar URL, 200×200', 'https://…/200x200'],
+        ],
+    },
+    {
+        id: 'time',
+        label: 'Date & time',
+        items: [
+            ['?date', 'ISO date', '2024-03-15'],
+            ['?dateTime', 'Date and time', '2024-03-15 14:30:00'],
+            ['?stupidDateTime', 'US format', '03/15/2024 14:30:00'],
+            ['?time', 'Time', '14:30:00'],
+        ],
+    },
+    {
+        id: 'ids',
+        label: 'IDs & misc',
+        items: [
+            ['?uuid', 'Random UUID', 'a3bb189e-8bf9-3888-…'],
+            ['?counterUuid', 'Incrementing UUID', '00000000-0000-0000-0000-000000000001'],
+            ['?boolean', 'true or false', 'true'],
+            ['?color', 'Hex colour', '#3498db'],
+            ['?colorName', 'Colour name', 'Blue'],
+            ['?creditCard', 'Card number, test only', '4532-1234-5678-9010'],
+        ],
+    },
+];

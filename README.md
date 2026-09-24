@@ -20,16 +20,40 @@ cp .env.deploy.example .env   # fill in APP_KEY, passwords
 docker compose up -d --build
 ```
 
-`compose.yaml` runs the app and a private MySQL 8.4 with a named volume.
-All Laravel settings are fixed in `compose.yaml`; `.env` only holds secrets
-and the hostname (`PROJECT_NAME`, `BASE_DOMAIN`, `APP_URL`). The app joins an
-external `proxy` network with Traefik labels; create it with
-`docker network create proxy` if no proxy is running.
+`compose.yaml` runs the app only. It expects a MySQL-compatible server
+reachable as `DB_HOST` (default `mariadb`) on an external `db` network, and a
+Traefik reverse proxy on an external `proxy` network. Create both networks
+with `docker network create proxy db` and run your own database container
+on `db` if you are not on the shared host. All Laravel settings are fixed in
+`compose.yaml`; `.env` only holds secrets, database credentials and the
+hostname (`PROJECT_NAME`, `BASE_DOMAIN`, `APP_URL`).
 
 Generate an `APP_KEY` with:
 
 ```bash
 php artisan key:generate --show
+```
+
+## Front-end
+
+The site is a small Vue 3 single-page app served by Laravel (`resources/js`,
+`resources/css`), built with Vite. Three pages share one bundle:
+
+| Route | What it is |
+|-------|------------|
+| `/` | Landing page with a live builder that hits `/api/demo` using a shared demo token |
+| `/builder` | The app: workspace sidebar, instruction chips, body editor, response and code examples |
+| `/docs` | Reference docs (always light), generated from the same data the builder uses |
+
+Design tokens live in `resources/css/tokens.css` (dark default, light via
+`data-theme="light"`). Saved endpoints, theme and token are stored in
+`localStorage` only; there is no server-side workspace. Share links are
+encoded in the URL and do not touch the API.
+
+```bash
+npm install
+npm run dev      # Vite dev server with HMR (pair with `php artisan serve`)
+npm run build    # writes public/build for production
 ```
 
 ## How It Works
@@ -163,6 +187,7 @@ Control the response behavior:
 | `headers` | object | Custom response headers |
 | `max_pages` | number | Enable pagination metadata in response |
 | `no_cache` | boolean | Skip caching this response |
+| `flaky` | boolean or object | Fail some calls. `true` fails about half of them with a 500/502/503/504/429. `{ "every": 3, "codes": [502, 410] }` fails every third call with one of the codes. Failures reply `{ "error": "<reason>", "code": <n> }` with a `__flaky: failed` header; flaky requests are never cached. |
 
 ```json
 {
